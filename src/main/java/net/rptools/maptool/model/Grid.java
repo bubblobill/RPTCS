@@ -1,0 +1,1188 @@
+/*
+ * This software Copyright by the RPTools.net development team, and
+ * licensed under the Affero GPL Version 3 or, at your option, any later
+ * version.
+ *
+ * MapTool Source Code is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License * along with this source Code.  If not, please visit
+ * <http://www.gnu.org/licenses/> and specifically the Affero license
+ * text at <http://www.gnu.org/licenses/agpl.html>.
+ */
+package net.rptools.maptool.model;
+
+import com.google.common.base.Stopwatch;
+import java.awt.*;
+import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
+import javax.swing.Action;
+import javax.swing.KeyStroke;
+import net.rptools.maptool.client.AppPreferences;
+import net.rptools.maptool.client.DeveloperOptions;
+import net.rptools.maptool.client.MapTool;
+import net.rptools.maptool.client.tool.PointerTool;
+import net.rptools.maptool.client.ui.zone.renderer.ZoneRenderer;
+import net.rptools.maptool.client.walker.WalkerMetric;
+import net.rptools.maptool.client.walker.ZoneWalker;
+import net.rptools.maptool.events.MapToolEventBus;
+import net.rptools.maptool.model.TokenFootprint.OffsetTranslator;
+import net.rptools.maptool.model.zones.GridChanged;
+import net.rptools.maptool.server.proto.GridDto;
+import net.rptools.maptool.util.GraphicsUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+/**
+ * Base class for grids.
+ *
+ * @author trevor
+ */
+public abstract class Grid implements Cloneable {
+
+  /**
+   * The minimum grid size (minimum on any dimension). The default value is 9 because the algorithm
+   * for determining whether a given square cell can be entered due to fog blocking the cell is
+   * based on the cell being split into 3x3, then the center further being split into 3x3; thus at
+   * least 9 pixels horizontally and vertically are required.
+   */
+  public static final int MIN_GRID_SIZE = 9;
+
+  public static final int MAX_GRID_SIZE = 350;
+  protected static final Logger log = LogManager.getLogger();
+  protected static final int CIRCLE_SEGMENTS = 60;
+
+  private static final Dimension NO_DIM = new Dimension();
+  private static final DirectionCalculator calculator = new DirectionCalculator();
+  private static final Map<Integer, Area> gridShapeCache = new ConcurrentHashMap<>();
+
+  protected transient Map<KeyStroke, Action> movementKeys = null;
+  private transient Zone zone;
+  private transient Area cellShape;
+  private transient List<TokenFootprint> footprintList;
+  private int offsetX = 0;
+  private int offsetY = 0;
+  private int size;
+
+  public Grid() {
+    setSize(AppPreferences.defaultGridSize.get());
+  }
+
+  public Grid(Grid grid) {
+    setSize(grid.getSize());
+    setOffset(grid.offsetX, grid.offsetY);
+  }
+
+  public static Shape createGridShape(String gridType, double size) {
+    final Shape gridShape;
+    int sides = 0;
+    double startAngle = 0;
+    double increment;
+    double skew = 0;
+    double hScale = 1;
+    double vScale = 1;
+    final double root2 = Math.sqrt(2d);
+    final double root3 = Math.sqrt(3d);
+    switch (gridType) {
+      case GridFactory.HEX_HORI -> {
+        sides = 6;
+        startAngle = Math.TAU / 12;
+        hScale = vScale = root3 / 3d;
+      }
+      case GridFactory.HEX_VERT -> {
+        sides = 6;
+        hScale = vScale = root3 / 3d;
+      }
+      case GridFactory.ISOMETRIC -> {
+        sides = 4;
+        vScale = 0.5;
+      }
+      case GridFactory.ISOMETRIC_HEX -> {
+        sides = 6;
+        startAngle = Math.TAU / 24;
+        hScale = vScale = root3 / 3d;
+        skew = Math.toRadians(30d);
+      }
+      case GridFactory.NONE -> {
+        return new Ellipse2D.Double(-size / 2d, -size / 2d, size, size);
+      }
+      case GridFactory.SQUARE -> {
+        sides = 4;
+        hScale = vScale = root2 / 2d;
+        startAngle = Math.TAU / 8d;
+      }
+    }
+    increment = Math.TAU / sides;
+    Path2D path = new Path2D.Double();
+    path.moveTo(Math.cos(startAngle) * size * hScale, Math.sin(startAngle) * size * vScale);
+    for (int i = 1; i < sides; i++) {
+      path.lineTo(
+          Math.cos(startAngle + i * increment) * size * hScale,
+          Math.sin(startAngle + i * increment) * size * vScale);
+    }
+    path.closePath();
+    if (skew != 0) {
+      gridShape = AffineTransform.getShearInstance(skew, 0).createTransformedShape(path);
+    } else {
+      gridShape = path;
+    }
+    return gridShape;
+  }
+
+  protected Object readResolve() {
+    cellShape = createCellShape();
+    return this;
+  }
+
+  protected synchronized Map<Integer, Area> getGridShapeCache() {
+    return gridShapeCache;
+  }
+
+  private synchronized void setGridShapeCache(int gridRadius, Area newGridArea) {
+    final AffineTransform at = new AffineTransform();
+    final double gridScale = (double) MAX_GRID_SIZE / getSize();
+    at.scale(gridScale, gridScale);
+
+    getGridShapeCache().put(gridRadius, newGridArea.createTransformedArea(at));
+
+    // Verify combined Area is a single union of polygons
+    if (!newGridArea.isSingular()) {
+      log.warn(
+          "gridShape {} is not singular, this is unexpected and could affect performance.",
+          gridRadius);
+    }
+  }
+
+  public void drawCoordinatesOverlay(Graphics2D g, ZoneRenderer renderer) {
+    // Do nothing -- my default
+  }
+
+  /**
+   * Get the next standard facing in the given direction.
+   *
+   * @param facing The current facing.
+   * @param faceEdges Whether to snap facing to edges.
+   * @param faceVertices
+   * @param clockwise
+   * @return
+   */
+  public final int nextFacing(
+      int facing, boolean faceEdges, boolean faceVertices, boolean clockwise) {
+    // Work in range (0, 360] as it is easier for implementations.
+    // Will convert back to (-180,180] at the end.
+    facing = Math.floorMod(facing - 1, 360) + 1;
+
+    int nextFacing = snapFacingInternal(facing, faceEdges, faceVertices, clockwise ? -1 : 1);
+
+    return normalizeFacing(nextFacing);
+  }
+
+  public final int nearestFacing(int facing, boolean faceEdges, boolean faceVertices) {
+    // Work in range (0, 360] as it is easier for implementations.
+    // Will convert back to (-180,180] at the end.
+    facing = Math.floorMod(facing - 1, 360) + 1;
+
+    int nearestFacing = snapFacingInternal(facing, faceEdges, faceVertices, 0);
+
+    return normalizeFacing(nearestFacing);
+  }
+
+  /**
+   * Snaps a facing to the nearest edges or vertex, then optionally jumps to an adjacent one.
+   *
+   * @param facing The original facing. Must be set in the range 0 < facing <= 360.
+   * @param faceEdges If {@code true}, allow snapping the facing to the nearest edge.
+   * @param faceVertices If {@code true}, allow snapping the facing to the nearest vertex.
+   * @param addedSteps The number of edges or vertices to advance after snapping (depends on values
+   *     of {@code faceEdges} and {@code faceVertices}.
+   * @return The snapped facing. Can be any integer.
+   */
+  protected abstract int snapFacingInternal(
+      int facing, boolean faceEdges, boolean faceVertices, int addedSteps);
+
+  /**
+   * Return an equivalent facing in the range (-180, 180].
+   *
+   * @param facing
+   * @return
+   */
+  private int normalizeFacing(int facing) {
+    facing = Math.floorMod(facing, 360);
+    if (facing > 180) {
+      facing -= 360;
+    }
+    return facing;
+  }
+
+  /**
+   * Return the Point (double precision) for pixel center of Cell
+   *
+   * @param cell The cell to get the center of.
+   * @return Point of the coordinates.
+   */
+  public abstract Point2D.Double getCellCenter(CellPoint cell);
+
+  protected OffsetTranslator getOffsetTranslator() {
+    return null;
+  }
+
+  protected abstract List<TokenFootprint> createFootprints();
+
+  public TokenFootprint getDefaultFootprint() {
+    for (TokenFootprint footprint : getFootprints()) {
+      if (footprint.isDefault()) {
+        return footprint;
+      }
+    }
+    // None specified, use the first
+    return getFootprints().get(0);
+  }
+
+  public TokenFootprint getFootprint(GUID guid) {
+    if (guid == null) {
+      return getDefaultFootprint();
+    }
+    for (TokenFootprint footprint : getFootprints()) {
+      if (footprint.getId().equals(guid)) {
+        return footprint;
+      }
+    }
+    return getDefaultFootprint();
+  }
+
+  public List<TokenFootprint> getFootprints() {
+    if (footprintList == null) {
+      footprintList = createFootprints();
+
+      OffsetTranslator offsetTranslator = getOffsetTranslator();
+      if (offsetTranslator != null) {
+        for (var footprint : footprintList) {
+          footprint.addOffsetTranslator(offsetTranslator);
+        }
+      }
+    }
+    return footprintList;
+  }
+
+  public boolean isIsometric() {
+    return false;
+  }
+
+  public boolean useMetric() {
+    return false; // only square & iso use metrics
+  }
+
+  public boolean isHex() {
+    return false;
+  }
+
+  @Override
+  public Object clone() throws CloneNotSupportedException {
+    return super.clone();
+  }
+
+  /**
+   * Returns Coordinates in Cell-space of a {@link ZonePoint}.
+   *
+   * @param zp The {@link ZonePoint} to convert.
+   * @return Coordinates in Cell-space of the {@link ZonePoint}.
+   */
+  public abstract CellPoint convert(ZonePoint zp);
+
+  /**
+   * Returns a {@link ZonePoint} whose position within the cell depends on the grid type:
+   *
+   * <ul>
+   *   <li><i>SquareGrid</i> - top right of cell (x_min, y_min)
+   *   <li><i>HexGrid</i> - center of cell<br>
+   * </ul>
+   *
+   * <p>For HexGrids Use getCellOffset() to move ZonePoint from center to top right.
+   *
+   * @param cp the {@link CellPoint} to convert.
+   * @return a {@link ZonePoint} within the cell.
+   */
+  public abstract ZonePoint convert(CellPoint cp);
+
+  public ZonePoint midZonePoint(CellPoint a, CellPoint b) {
+    var centerA = getCellCenter(a);
+    var centerB = getCellCenter(b);
+    var midPoint =
+        new Point2D.Double(
+            (centerA.getX() + centerB.getX()) / 2, (centerA.getY() + centerB.getY()) / 2);
+    return new ZonePoint((int) midPoint.getX(), (int) midPoint.getY());
+  }
+
+  public ZonePoint getNearestVertex(ZonePoint point) {
+    double gridx = Math.round((point.x - getOffsetX()) / getCellWidth());
+    double gridy = Math.round((point.y - getOffsetY()) / getCellHeight());
+
+    return new ZonePoint(
+        (int) (gridx * getCellWidth() + getOffsetX()),
+        (int) (gridy * getCellHeight() + getOffsetY()));
+  }
+
+  /**
+   * Like {@link #getNearestVertex(ZonePoint)}, but can snap by sub-cell increments.
+   *
+   * <p>It is up to the implementation what a useful definition of "fine" is. By default, it is the
+   * same as {@link #getNearestVertex(ZonePoint)}. For square grids it is the same as snapping to a
+   * half-grid.
+   *
+   * @param point The point to snap.
+   * @return The snapped point.
+   */
+  public Point2D snapFine(ZonePoint point) {
+    var vertex = getNearestVertex(point);
+    return new Point2D.Double(vertex.x, vertex.y);
+  }
+
+  public abstract GridCapabilities getCapabilities();
+
+  public int getTokenSpace() {
+    return getSize();
+  }
+
+  public double getCellWidth() {
+    return 0;
+  }
+
+  public double getCellHeight() {
+    return 0;
+  }
+
+  /**
+   * @return the difference in pixels between the center of a cell and its converted zonepoint.
+   */
+  public abstract Point2D.Double getCenterOffset();
+
+  /**
+   * @return The offset required to translate from the center of a cell to the top right (x_min,
+   *     y_min) of the cell's bounding rectangle. Used for non-square grids only.<br>
+   *     <br>
+   *     Why? Because mySquareGrid.convert(CellPoint cp) returns a ZonePoint in the top right
+   *     corner(x_min, y_min) of the square-cell, whereas myHexGrid.convert(CellPoint cp) returns a
+   *     ZonePoint in the center of the hex-cell. Thus adding the CellOffset allows us to position
+   *     the ZonePoint returned by myHexGrid.convert(CellPoint cp) in an equivalent position to that
+   *     returned by mySquareGrid.convert(CellPoint cp)....I think ;)
+   */
+  public Dimension getCellOffset() {
+    return NO_DIM;
+  }
+
+  public Zone getZone() {
+    return zone;
+  }
+
+  public void setZone(Zone zone) {
+    this.zone = zone;
+  }
+
+  public Area getCellShape() {
+    return cellShape;
+  }
+
+  public BufferedImage getCellHighlight() {
+    return null;
+  }
+
+  /**
+   * Build the shape of a cell for the current grid size.
+   *
+   * @return The cell shape.
+   */
+  protected abstract Area createCellShape();
+
+  /**
+   * @param offsetX The grid's x offset component
+   * @param offsetY The grid's y offset component
+   */
+  public void setOffset(int offsetX, int offsetY) {
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
+
+    fireGridChanged();
+  }
+
+  /**
+   * @return The x component of the grid's offset.
+   */
+  public int getOffsetX() {
+    return offsetX;
+  }
+
+  /**
+   * @return The y component of the grid's offset
+   */
+  public int getOffsetY() {
+    return offsetY;
+  }
+
+  public ZoneWalker createZoneWalker() {
+    return null;
+  }
+
+  /**
+   * Constrains size to {@code MIN_GRID_SIZE <= size <= MAX_GRID_SIZE}
+   *
+   * @param size the size value to constrain.
+   * @return The size after it has been constrained.
+   */
+  protected final int constrainSize(int size) {
+    if (size < MIN_GRID_SIZE) {
+      size = MIN_GRID_SIZE;
+    } else if (size > MAX_GRID_SIZE) {
+      size = MAX_GRID_SIZE;
+    }
+    return size;
+  }
+
+  /**
+   * @return The size of the grid<br>
+   *     <br>
+   *     *<i>SquareGrid</i> - edge length<br>
+   *     *<i>HexGrid</i> - edge to edge diameter
+   */
+  public int getSize() {
+    return size;
+  }
+
+  /**
+   * Sets the grid size and creates the grid cell shape
+   *
+   * @param size The size of the grid<br>
+   *     <i>SquareGrid</i> - edge length<br>
+   *     <i>HexGrid</i> - edge to edge diameter
+   */
+  public void setSize(int size) {
+    this.size = constrainSize(size);
+    cellShape = createCellShape();
+    fireGridChanged();
+  }
+
+  // region Light shapes
+
+  /**
+   * Get the grid-relative angle of the token based on its facing.
+   *
+   * <p>This is used to rotate cones and beams according to the on-grid angle. The result is the
+   * number of clockwise degrees measured from the positive x-axis of the grid.
+   *
+   * <p>This method exists because {@link net.rptools.maptool.model.Token#getFacing()} is a measure
+   * of the on-screen angle of the token's facing, i.e., how many degrees from the positive x-axis
+   * of the screen. For most grids this is the same as measuring the number of degress from the
+   * positive x-axis of the grid, which is what is should be.
+   *
+   * <p>Things are different for isometric grids. Since they are rotated, the on-screen facing does
+   * not agree with the on-grid facing - there is a 45° offset. When building shapes, we need the
+   * on-grid facing, not the on-screen facing. This method allows isometric grids to override the
+   * default behaviour so that an on-grid facing is provided.
+   *
+   * @param token The token whose facing needs to be determined.
+   * @return The direction the token is facing, in clockwise degrees from the positive x-axis of the
+   *     grid.
+   */
+  protected int getTokenFacingAngleRelativeToGridAxis(Token token) {
+    return -token.getFacing();
+  }
+
+  /**
+   * Get the main area for a given light shape type.
+   *
+   * <p>This method expressly does not add in the footprint bit that cone lights are expected to
+   * have. This part cannot be freely transformed, so it is done separately in {@link
+   * #getFootprintShapedAreaForCone(java.awt.Rectangle)}.
+   *
+   * @param shape The shape. Can be any shape except {@link
+   *     net.rptools.maptool.model.ShapeType#GRID}.
+   * @param tokenFacingAngle The angle on-screen that the token is facing. Used for cones and beams
+   *     to provide the main axis of the shape.
+   * @param visionRange The range to which the token can see. Determines the size of the shape.
+   * @param width For beams, the width of the beam. Otherwise, ignored.
+   * @param arcAngle For cones, the internal angle of the point of the cone. Otherwise, ignored.
+   * @param offsetAngle For cones and beams, an offset to apply relative to the token facing.
+   *     Otherwise, ignored.
+   * @return The area of the light.
+   */
+  protected @Nonnull Area getShapedAreaWithoutFootprint(
+      ShapeType shape,
+      int tokenFacingAngle,
+      double visionRange,
+      double width,
+      double arcAngle,
+      int offsetAngle) {
+    Area visibleArea;
+    switch (shape) {
+      case CIRCLE -> {
+        visibleArea =
+            GraphicsUtil.createLineSegmentEllipse(
+                -visionRange, -visionRange, visionRange, visionRange, CIRCLE_SEGMENTS);
+      }
+      case SQUARE -> {
+        visibleArea =
+            new Area(
+                new Rectangle2D.Double(
+                    -visionRange, -visionRange, visionRange * 2, visionRange * 2));
+      }
+      case BEAM -> {
+        // Make at least 1 pixel on each side, so it's at least visible at 100% zoom.
+        var pixelWidth = Math.max(2, width * getSize() / zone.getUnitsPerCell());
+        Shape lineShape = new Rectangle2D.Double(0, -pixelWidth / 2, visionRange, pixelWidth);
+
+        visibleArea =
+            new Area(
+                AffineTransform.getRotateInstance(Math.toRadians(tokenFacingAngle - offsetAngle))
+                    .createTransformedShape(lineShape));
+      }
+      case CONE -> {
+        Arc2D cone =
+            new Arc2D.Double(
+                -visionRange,
+                -visionRange,
+                visionRange * 2,
+                visionRange * 2,
+                (offsetAngle - tokenFacingAngle) - arcAngle / 2.,
+                arcAngle,
+                Arc2D.PIE);
+
+        // Flatten the cone to remove 'curves'
+        GeneralPath path = new GeneralPath();
+        path.append(cone.getPathIterator(null, 1), false);
+        visibleArea = new Area(path);
+      }
+      case HEX -> {
+        visibleArea = createHex(visionRange);
+      }
+      case GRID -> {
+        log.error("Shape {} should not be handled here. Returning empty area.", shape);
+        visibleArea = new Area();
+      }
+      default -> {
+        log.error("Unhandled shape {}; treating as a circle", shape);
+        visibleArea =
+            GraphicsUtil.createLineSegmentEllipse(
+                -visionRange, -visionRange, visionRange * 2, visionRange * 2, CIRCLE_SEGMENTS);
+      }
+    }
+
+    return visibleArea;
+  }
+
+  protected @Nonnull Area getFootprintShapedAreaForCone(Rectangle footprint) {
+    var footprintPart = new Rectangle(footprint);
+    footprintPart.x = -footprintPart.width / 2;
+    footprintPart.y = -footprintPart.height / 2;
+    return new Area(footprintPart);
+  }
+
+  /**
+   * Called by SightType and Light class to return a vision area based upon a specified distance
+   *
+   * @param shape The shape of the light. Can be any {@link net.rptools.maptool.model.ShapeType}
+   * @param token Used to position the shape and to provide footprint
+   * @param range How far the shape should extends from the origin. If {@code 0}, the zone's vision
+   *     range is used.
+   * @param arcAngle Only used by cone
+   * @param offsetAngle Arc distance from facing, only used by cone
+   * @param scaleWithToken used to increase the area based on token footprint
+   * @return Area
+   */
+  public @Nonnull Area getShapedArea(
+      ShapeType shape,
+      Token token,
+      double range,
+      double width,
+      double arcAngle,
+      int offsetAngle,
+      boolean scaleWithToken) {
+    double visionRange =
+        ((range == 0) ? zone.getTokenVisionDistance() : range) * getSize() / zone.getUnitsPerCell();
+
+    Rectangle footprint = token.getFootprint(this).getBounds(this);
+
+    if (scaleWithToken) {
+      double footprintWidth = footprint.getWidth() / 2;
+
+      // Test for gridless maps
+      var cellShape = getCellShape();
+      if (cellShape == null) {
+        double tokenBoundsWidth = token.getFootprintBounds(zone).getWidth() / 2;
+        visionRange += (footprintWidth > tokenBoundsWidth) ? tokenBoundsWidth : tokenBoundsWidth;
+      } else {
+        // For grids, this will be the same, but for Hex's we'll use the smaller side depending on
+        // which Hex type you choose
+        double footprintHeight = footprint.getHeight() / 2;
+        visionRange += Math.min(footprintWidth, footprintHeight);
+      }
+    }
+
+    // Grid shape is unique in that it is deliberately "unnatural". So handle it separately.
+    if (shape == ShapeType.GRID) {
+      return getGridArea(token, range, scaleWithToken, visionRange);
+    }
+
+    var facingAngle = getTokenFacingAngleRelativeToGridAxis(token);
+    var visibleArea =
+        getShapedAreaWithoutFootprint(
+            shape, facingAngle, visionRange, width, arcAngle, offsetAngle);
+    if (shape == ShapeType.CONE) {
+      // Cones are unique in that they add the token footprint to the shape.
+      visibleArea.add(getFootprintShapedAreaForCone(footprint));
+    }
+
+    return visibleArea;
+  }
+
+  // endregion
+
+  /**
+   * Return the cell distance between two cells. Does not take into account terrain or VBL.
+   * Overridden by Hex &amp; Gridless grids.
+   *
+   * @param cellA the first cell
+   * @param cellB the second cell
+   * @param wmetric the walker metric
+   * @return the distance (in cells) between the two cells
+   */
+  public double cellDistance(CellPoint cellA, CellPoint cellB, WalkerMetric wmetric) {
+    int distX = Math.abs(cellA.x - cellB.x);
+    int distY = Math.abs(cellA.y - cellB.y);
+    int distance =
+        switch (wmetric) {
+          case NO_DIAGONALS, MANHATTAN -> distX + distY;
+          case ONE_TWO_ONE -> Math.max(distX, distY) + Math.min(distX, distY) / 2;
+          case ONE_ONE_ONE -> Math.max(distX, distY);
+        };
+    return distance;
+  }
+
+  protected Area createHex(double inRadius) {
+    double radius = inRadius * 2 / Math.sqrt(3);
+
+    var hexPath = new Path2D.Double();
+    hexPath.moveTo(radius, 0);
+    hexPath.lineTo(radius * 0.5, inRadius);
+    hexPath.lineTo(-radius * 0.5, inRadius);
+    hexPath.lineTo(-radius, 0);
+    hexPath.lineTo(-radius * 0.5, -inRadius);
+    hexPath.lineTo(radius * 0.5, -inRadius);
+    hexPath.closePath();
+
+    return new Area(hexPath);
+  }
+
+  private void fireGridChanged() {
+    getGridShapeCache().clear();
+    new MapToolEventBus().getMainEventBus().post(new GridChanged(this.zone));
+  }
+
+  /**
+   * Draws the grid scaled to the renderer's scale and within the renderer's boundaries.
+   *
+   * @param renderer the {@link ZoneRenderer} that represents the screen view.
+   * @param g the {@link Graphics2D} class used for drawing.
+   * @param bounds the bounds of the drawing area.
+   */
+  public void draw(ZoneRenderer renderer, Graphics2D g, Rectangle bounds) {
+    // Do nothing
+  }
+
+  /**
+   * Returns a rectangle of pixels bounding the CellPoint, taking into account the grid offset.
+   *
+   * @param cp the CellPoint to bound.
+   * @return the bounding rectangle.
+   */
+  public abstract Rectangle getBounds(CellPoint cp);
+
+  /**
+   * Override if getCapabilities.isSecondDimensionAdjustmentSupported() returns true
+   *
+   * @return length the curent value of the second settable dimension
+   */
+  public double getSecondDimension() {
+    return 0;
+  }
+
+  /**
+   * Override if getCapabilities.isSecondDimensionAdjustmentSupported() returns true
+   *
+   * @param length the second settable dimension
+   */
+  public void setSecondDimension(double length) {}
+
+  /**
+   * Installs a list of which which actions go with which keystrokes for the purpose of moving the
+   * token.
+   *
+   * @param callback The object whose methods are invoked when the event occurs
+   * @param actionMap the map of existing keystrokes we want to add ourselves to
+   */
+  public abstract void installMovementKeys(PointerTool callback, Map<KeyStroke, Action> actionMap);
+
+  public abstract void uninstallMovementKeys(Map<KeyStroke, Action> actionMap);
+
+  /**
+   * Tests the grid cell location to determine whether a token is allowed to move into it when such
+   * movement is player-initiated. (The GM may always move a token into a given grid cell.) This
+   * implementation only handles square grids. When a hex and/or gridless implementation is created,
+   * this method should be refactored to the {@link SquareGrid} class and this method changed to
+   * always return <code>true</code>.
+   *
+   * <p>Theory of operation:
+   *
+   * <ol>
+   *   <li>Break the area to check into a 3x3 set of pieces.
+   *   <li>Determine which direction the token is coming from.
+   *   <li>For the three pieces of the 3x3 set which are closest to that incoming direction, if all
+   *       of the three contain fog, the cell cannot be entered. Return <code>false</code>.
+   *       Otherwise, at least one does not contain fog. Proceed to the next step.
+   *   <li>Select the region encompassed by the center of the 3x3 set of pieces.
+   *   <li>Break this region into another 3x3 set of pieces.
+   *   <li>If at least 6 of these pieces are fog-free, then the space is open. Return <code>true
+   *       </code>.
+   *   <li>If at least 4 of these pieces contain fog, then the space is closed. Return <code>false
+   *       </code>.
+   * </ol>
+   *
+   * @param token token whose movement is being validated; passed in case token state is needed
+   * @param areaToCheck destination area to check, measured in ZonePoint units
+   * @param dirx direction token is traveling along the X axis
+   * @param diry direction token is traveling along the Y axis
+   * @param exposedFog area in which fog has been cleared away
+   * @return true or false whether the token may move into the area
+   */
+  public boolean validateMove(
+      Token token, Rectangle areaToCheck, int dirx, int diry, Area exposedFog) {
+    int direction = calculator.getDirection(dirx, diry);
+
+    Rectangle bounds = new Rectangle();
+    int bit = 1;
+
+    if (areaToCheck.width < 9 || (dirx == 0 && diry == 0)) {
+      direction = (512 - 1) & ~DirectionCalculator.CENTER;
+    }
+
+    for (int dy = 0; dy < 3; dy++) {
+      for (int dx = 0; dx < 3; dx++, bit *= 2) {
+        if ((direction & bit) == 0) {
+          continue;
+        }
+        oneThird(areaToCheck, dx, dy, bounds);
+
+        // The 'fog' variable defines areas where fog has been cleared away
+        if (!exposedFog.contains(bounds)) {
+          continue;
+        }
+        return checkCenterRegion(areaToCheck, exposedFog);
+      }
+    }
+    // Everything is covered with fog. Or at least, the three regions that we wanted to use to enter
+    // the destination area.
+    return false;
+  }
+
+  /**
+   * Returns an area based upon the token's cell footprint.
+   *
+   * @param bounds the bounds of the cell.
+   * @return the {@link Area} based on the footprint.
+   */
+  public Area getTokenCellArea(Rectangle bounds) {
+    // Get the cell footprint
+    return new Area(bounds);
+  }
+
+  public Area getTokenCellArea(Area bounds) {
+    // Get the cell footprint
+    return new Area(bounds);
+  }
+
+  /**
+   * Check the middle region by subdividing into 3x3 and checking to see if at least 6 are open.
+   *
+   * @param regionToCheck rectangular region to check for hard fog
+   * @param fog defines areas where fog is currently covering the background
+   * @return {@code true} if at least 6 regions are open.
+   */
+  public boolean checkCenterRegion(Rectangle regionToCheck, Area fog) {
+    Rectangle center = new Rectangle();
+    Rectangle bounds = new Rectangle();
+    oneThird(regionToCheck, 1, 1, center); // selects the CENTER piece
+
+    int closedSpace = 0;
+    int openSpace = 0;
+    for (int dy = 0; dy < 3; dy++) {
+      for (int dx = 0; dx < 3; dx++) {
+        oneThird(center, dx, dy, bounds);
+        if (bounds.width < 1 || bounds.height < 1) {
+          continue;
+        }
+        if (!fog.intersects(bounds)) {
+          if (++closedSpace > 3) {
+            return false;
+          }
+        } else {
+          if (++openSpace > 5) {
+            return true;
+          }
+        }
+      }
+    }
+    log.info(
+        "Center region of size {} contains neither 4+ closed spaces nor 6+ open spaces?!",
+        regionToCheck.getSize());
+    return openSpace >= closedSpace;
+  }
+
+  /**
+   * Check the region by subdividing into 3x3 and checking to see if at least {@code tolerance} are
+   * open.
+   *
+   * @param regionToCheck rectangular region to check for hard fog
+   * @param fog defines areas where fog is currently covering the background
+   * @param tolerance the number of open regions to check for.
+   * @return {code true} if there are at least {@code tolerance} open regions.
+   */
+  public boolean checkRegion(Rectangle regionToCheck, Area fog, int tolerance) {
+    Rectangle bounds = new Rectangle();
+
+    int closedSpace = 0;
+    int openSpace = 0;
+    for (int dy = 0; dy < 3; dy++) {
+      for (int dx = 0; dx < 3; dx++) {
+        oneThird(regionToCheck, dx, dy, bounds);
+        if (bounds.width < 1 || bounds.height < 1) {
+          continue;
+        }
+        if (!fog.intersects(bounds)) {
+          if (++closedSpace > (9 - tolerance)) {
+            return false;
+          }
+        } else {
+          if (++openSpace > tolerance) {
+            return true;
+          }
+        }
+      }
+    }
+    log.info(
+        "Center region of size {} contains neither {}+ closed spaces nor {}+ open spaces?!",
+        regionToCheck.getSize(),
+        9 - tolerance,
+        tolerance);
+    return openSpace >= closedSpace;
+  }
+
+  /**
+   * Divides the specified region into one of nine parts, where the column and row range from 0..2.
+   * The destination Rectangle must already exist (no check for this is made) and it must not be a
+   * reference to the same object as the region to divide (also not checked).
+   *
+   * @param regionToDivide region to subdivide
+   * @param column column in the 3x3 grid
+   * @param row row in the 3x3 grid
+   * @param destination one of nine possible pieces represented as a Rectangle
+   */
+  private void oneThird(Rectangle regionToDivide, int column, int row, Rectangle destination) {
+    int width = regionToDivide.width * column / 3;
+    int height = regionToDivide.height * row / 3;
+    destination.x = regionToDivide.x + width;
+    destination.y = regionToDivide.y + height;
+    destination.width =
+        regionToDivide.width * (column + 1) / 3 - regionToDivide.width * column / 3; // don't
+    // simplify
+    // or
+    // roundoff
+    // will be
+    // introduced
+    destination.height = regionToDivide.height * (row + 1) / 3 - regionToDivide.height * row / 3;
+  }
+
+  /**
+   * Returns an Area with a given radius that is shaped and aligned to the current grid
+   *
+   * @param token token which to center the grid area on
+   * @param range range in units grid area extends out to. if set to {@code 0}, the result will be a
+   *     circular area extending out to {@code visionRange}.
+   * @param scaleWithToken whether grid area should expand by the size of the token
+   * @param visionRange token's vision in pixels
+   * @return the {@link Area} conforming to the current grid layout
+   */
+  protected Area getGridArea(
+      Token token, double range, boolean scaleWithToken, double visionRange) {
+
+    final Area visibleArea;
+
+    if (range > 0) {
+      final Stopwatch stopwatch = Stopwatch.createStarted();
+      final int gridRadius = (int) (range / zone.getUnitsPerCell());
+
+      if (scaleWithToken) {
+        visibleArea = getScaledGridArea(token, gridRadius);
+      } else {
+        visibleArea = getGridAreaFromCache(gridRadius).createTransformedArea(getGridOffset(token));
+      }
+
+      if (stopwatch.elapsed(TimeUnit.MILLISECONDS) > 50) {
+        log.debug(
+            "Excessive time to generate {}r grid light, took {}ms",
+            gridRadius,
+            stopwatch.elapsed(TimeUnit.MILLISECONDS));
+      }
+    } else {
+      // Fall back to regular circle in daylight, etc.
+      visibleArea =
+          GraphicsUtil.createLineSegmentEllipse(
+              -visionRange, -visionRange, visionRange, visionRange, CIRCLE_SEGMENTS);
+    }
+
+    return visibleArea;
+  }
+
+  /**
+   * Returns a combined Area where radius included the tokens footprint. e.g. a 15ft light on a Huge
+   * token radiates 15ft from all sides of the token.
+   *
+   * @param token token to generate area from
+   * @param gridRadius distance from token edge to generate area
+   * @return the {@link Area} conforming to the current grid layout scaled to include the tokens
+   *     size
+   */
+  protected Area getScaledGridArea(Token token, int gridRadius) {
+    final double offsetX = token.getX() + token.getFootprint(this).getBounds(this).getWidth() / 2;
+    final double offsetY = token.getY() + token.getFootprint(this).getBounds(this).getHeight() / 2;
+    final Area gridArea = getGridAreaFromCache(gridRadius);
+    Area occupiedArea = new Area();
+
+    for (CellPoint occupiedCell : token.getOccupiedCells(this)) {
+      final double x = (occupiedCell.x * getSize()) - offsetX;
+      final double y = (occupiedCell.y * getSize()) - offsetY;
+      final AffineTransform at = new AffineTransform();
+      at.translate(x, y);
+
+      occupiedArea.add(gridArea.createTransformedArea(at));
+    }
+
+    return occupiedArea;
+  }
+
+  /**
+   * Returns translated coordinates to adjust the grid area for token footprints that are an odd
+   * number of cells and SCALE keyword is not used to adjust the Area proportionally.
+   *
+   * @param token source token to check footprint against
+   * @return the {@link AffineTransform} to align an {@link Area} to the current grid
+   */
+  protected AffineTransform getGridOffset(Token token) {
+    double footprintWidth = token.getFootprint(this).getBounds(this).getWidth();
+
+    final AffineTransform at = new AffineTransform();
+    if ((footprintWidth / getSize()) % 2 != 0) {
+      double coordinateOffset = getSize() / -2;
+      at.translate(coordinateOffset, coordinateOffset);
+    }
+    return at;
+  }
+
+  /**
+   * Generates an Area that conforms to the current grid cells to the specified radius and caches
+   * the results
+   *
+   * @param gridRadius radius of the Area measured using ONE_TWO_ONE metric
+   * @return the {@link Area} conforming to the current grid layout for the given radius
+   */
+  protected Area createGridArea(int gridRadius) {
+    final Area cellArea = new Area(getCellShape());
+    final Set<Point> points = generateRadius(gridRadius);
+    Area gridArea = new Area();
+
+    for (Point point : points) {
+      final AffineTransform at = new AffineTransform();
+      at.translate((point.x) * getSize(), (point.y) * getSize());
+      gridArea.add(cellArea.createTransformedArea(at));
+    }
+
+    return gridArea;
+  }
+
+  /**
+   * Generates a set of {@link Point} used to create a grid area that only includes the outer most
+   * edge of cells
+   *
+   * @param radius The maximum radius to generate the ring of cell points for this range
+   * @return a {@link HashSet} that includes all cells that only equal in distance to the given
+   *     radius
+   */
+  protected Set<Point> generateRing(int radius) {
+    return generateRadius(radius, radius);
+  }
+
+  /**
+   * Generates a set of {@link Point} used to create a grid area
+   *
+   * @param radius The maximum radius to generate all cell points within this range
+   * @return a {@link HashSet} that includes all cells up to the radius
+   */
+  protected Set<Point> generateRadius(int radius) {
+    return generateRadius(0, radius);
+  }
+
+  /**
+   * Generates a set of {@link Point} used to create a grid area
+   *
+   * @param minRadius The minimum radius to generate the ring of cell points for this range
+   * @param maxRadius The maximum radius to generate the ring of cell points for this range
+   * @return a {@link HashSet} that includes all cells between the minRadius to the maxRadius
+   */
+  protected Set<Point> generateRadius(int minRadius, int maxRadius) {
+    Set<Point> points = new HashSet<>();
+    CellPoint start = new CellPoint(0, 0);
+
+    WalkerMetric metric = getCurrentMetric();
+
+    for (int y = -maxRadius; y <= maxRadius; y++) {
+      for (int x = -maxRadius; x <= maxRadius; x++) {
+        double distance = cellDistance(start, new CellPoint(x, y), metric);
+        if (distance >= minRadius && distance <= maxRadius) {
+          points.add(new Point(x, y));
+        }
+      }
+    }
+
+    return points;
+  }
+
+  /**
+   * Future change may include getting a metric from a different property/source
+   *
+   * @return the current {@link WalkerMetric} depending on if a server is running or not
+   */
+  protected WalkerMetric getCurrentMetric() {
+    return MapTool.isPersonalServer()
+        ? AppPreferences.movementMetric.get()
+        : MapTool.getServerPolicy().getMovementMetric();
+  }
+
+  /**
+   * Retrieve the generated grid conformed {@link Area} from cache if it exists, otherwise generate,
+   * store, and return it.
+   *
+   * @param gridRadius The radius of the {@link Area} to retrieve from cache.
+   * @return the {@link Area} from cache for the given gridRadius
+   */
+  protected Area getGridAreaFromCache(int gridRadius) {
+    // If not already in cache, create and cache it
+    // Or if the flag is enabled, recreate cache
+    if (DeveloperOptions.Toggle.IgnoreGridShapeCache.get()
+        || !getGridShapeCache().containsKey(gridRadius)) {
+      var newArea = createGridArea(gridRadius);
+      setGridShapeCache(gridRadius, newArea);
+    }
+
+    double rescale = getSize() / (double) MAX_GRID_SIZE;
+    final AffineTransform at = new AffineTransform();
+    at.scale(rescale, rescale);
+
+    return getGridShapeCache().get(gridRadius).createTransformedArea(at);
+  }
+
+  public static Grid fromDto(GridDto dto) {
+    Runnable postProcess = () -> {};
+    Grid grid =
+        switch (dto.getTypeCase()) {
+          case GRIDLESS_GRID -> new GridlessGrid();
+          case HEX_GRID -> {
+            var hexDto = dto.getHexGrid();
+            var hexGrid = hexDto.getVertical() ? new HexGridVertical() : new HexGridHorizontal();
+            postProcess = () -> hexGrid.readDto(hexDto);
+            yield hexGrid;
+          }
+          case SQUARE_GRID -> new SquareGrid();
+          case ISOMETRIC_GRID -> new IsometricGrid();
+          default -> {
+            log.error("Unrecognized Grid DTO: {}. Defaulting to square grid", dto.getTypeCase());
+            yield new SquareGrid();
+          }
+        };
+
+    grid.offsetX = dto.getOffsetX();
+    grid.offsetY = dto.getOffsetY();
+    grid.size = dto.getSize();
+    postProcess.run();
+
+    grid.cellShape = grid.createCellShape();
+
+    return grid;
+  }
+
+  protected abstract void fillDto(GridDto.Builder dto);
+
+  public GridDto toDto() {
+    var dto = GridDto.newBuilder();
+    fillDto(dto);
+    dto.setOffsetX(offsetX);
+    dto.setOffsetY(offsetY);
+    dto.setSize(size);
+    return dto.build();
+  }
+
+  static class DirectionCalculator {
+
+    private static final int NW = 1;
+    private static final int N = 2;
+    private static final int NE = 4;
+    private static final int W = 8;
+    private static final int CENTER = 16;
+    private static final int E = 32;
+    private static final int SW = 64;
+    private static final int S = 128;
+    private static final int SE = 256;
+
+    public int getDirection(int dirx, int diry) {
+      int TopRow = (NW | N | NE);
+      int MidRow = (W | CENTER | E);
+      int BotRow = (SW | S | SE);
+
+      int LeftCol = (NW | W | SW);
+      int MidCol = (N | CENTER | S);
+      int RightCol = (NE | E | SE);
+
+      int direction = TopRow | MidRow | BotRow;
+
+      if (dirx > 0) {
+        direction &= (LeftCol | MidCol); // two left columns
+      }
+      if (dirx < 0) {
+        direction &= (MidCol | RightCol); // two right columns
+      }
+
+      if (diry > 0) {
+        direction &= (TopRow | MidRow); // two top rows
+      }
+      if (diry < 0) {
+        direction &= (MidRow | BotRow); // two bottom rows
+      }
+
+      if (dirx == 0) {
+        direction &= ~MidRow;
+      }
+      if (diry == 0) {
+        direction &= ~MidCol;
+      }
+
+      direction &= ~CENTER; // Always turn off the center since we don't check it using the outside
+      // iterations...
+
+      return direction;
+    }
+  }
+}

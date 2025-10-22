@@ -1,0 +1,54 @@
+# OS generated files
+################################################################################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+
+# Others
+################################################################################
+.gradle
+.gradletasknamecache
+build/
+bin/
+target/
+out/
+/releases/
+*.log
+*~
+\${sys:appHome}/
+build-resources/wikiDocExtraction/*.txt
+build-resources/wikiDocExtraction/*.xml
+
+
+# Automatically Generated
+################################################################################
+package/windows/MapTool.iss
+package/linux/MapTool*.desktop
+
+
+# IDEs
+################################################################################
+*.iml
+.idea/
+.*.sw[p0-9]
+.sw[p0-9]
+.project
+.settings/
+.classpath
+.history
+workbench.xmi
+.theia
+.nb-*
+
+# Keystore
+build-resources/rptools-keystore
+/log.html
+/report.html
+/output.xml
+/lib/jide/
+/local.properties
