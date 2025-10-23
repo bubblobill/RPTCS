@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
-import net.rptools.maptool.model.Zone;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -66,9 +66,6 @@ public class AppStatePersisted {
 
   /** Represents the key used to save the paint textures to the preferences. */
   private static final String KEY_SAVED_PAINT_TEXTURES = "savedTextures";
-
-  /** Will be null until read from preferences. */
-  private static EnumSet<Zone.TopologyType> topologyTypes = null;
 
   public static void clearAssetRoots() {
     prefs.put(KEY_ASSET_ROOTS, "");
@@ -137,112 +134,4 @@ public class AppStatePersisted {
     }
   }
 
-  public static void setMruCampaigns(List<File> mruCampaigns) {
-    StringBuilder combined = new StringBuilder();
-    for (File file : mruCampaigns) {
-      String path;
-      try {
-        path = file.getCanonicalPath();
-      } catch (IOException e) {
-        // Probably pretty rare, but we want to know about it
-        log.info("unexpected during file.getCanonicalPath()", e); // $NON-NLS-1$
-        path = file.getPath();
-      }
-      // It's important that '%3A' is done last. Note that the pathSeparator may not be a colon on
-      // the current platform, but it doesn't matter since it will be reconverted when read back in
-      // again.
-      // THink of the '%3A' as a symbol of the separator, not an encoding of the character.
-      combined.append(path.replaceAll("%", "%25").replaceAll(File.pathSeparator, "%3A"));
-      combined.append(File.pathSeparator);
-    }
-    prefs.put(KEY_MRU_CAMPAIGNS, combined.toString());
-  }
-
-  public static List<File> getMruCampaigns() {
-    var mruCampaigns = new ArrayList<File>();
-    String combined = prefs.get(KEY_MRU_CAMPAIGNS, null);
-    if (combined != null) {
-      // It's important that '%3A' is done first
-      combined = combined.replaceAll("%3A", File.pathSeparator).replaceAll("%25", "%");
-      String[] all = combined.split(File.pathSeparator);
-      for (String s : all) {
-        mruCampaigns.add(new File(s));
-      }
-    }
-    return mruCampaigns;
-  }
-
-  private static EnumSet<Zone.TopologyType> readTopologyTypes() {
-    try {
-      String typeNames = prefs.get(KEY_TOPOLOGY_TYPES, "");
-      if ("".equals(typeNames)) {
-        // Fallback to the key used prior to the introduction of various VBL types.
-        String oldDrawingMode = prefs.get(KEY_OLD_TOPOLOGY_DRAWING_MODE, DEFAULT_TOPOLOGY_TYPE);
-        return switch (oldDrawingMode) {
-          case "VBL" -> EnumSet.of(Zone.TopologyType.WALL_VBL);
-          case "MBL" -> EnumSet.of(Zone.TopologyType.MBL);
-          case "COMBINED" -> EnumSet.of(Zone.TopologyType.WALL_VBL, Zone.TopologyType.MBL);
-          default -> EnumSet.of(Zone.TopologyType.WALL_VBL);
-        };
-      } else {
-        var result = EnumSet.noneOf(Zone.TopologyType.class);
-        for (var topologyType : Zone.TopologyType.values()) {
-          if (typeNames.contains(topologyType.name())) {
-            result.add(topologyType);
-          }
-        }
-        return result;
-      }
-    } catch (Exception exc) {
-      return EnumSet.of(Zone.TopologyType.WALL_VBL);
-    }
-  }
-
-  private static void writeTopologyTypes(Set<Zone.TopologyType> types) {
-    String joined = types.stream().map(Enum::name).collect(Collectors.joining(",", "[", "]"));
-    prefs.put(KEY_TOPOLOGY_TYPES, joined);
-  }
-
-  public static Set<Zone.TopologyType> getTopologyTypes() {
-    if (topologyTypes == null) {
-      topologyTypes = readTopologyTypes();
-    }
-    return topologyTypes;
-  }
-
-  /**
-   * Sets the selected topology modes.
-   *
-   * @param types the topology types.
-   */
-  public static void setTopologyTypes(Set<Zone.TopologyType> types) {
-    if (topologyTypes == null) {
-      topologyTypes = EnumSet.noneOf(Zone.TopologyType.class);
-    }
-    topologyTypes.clear();
-    topologyTypes.addAll(types);
-
-    writeTopologyTypes(topologyTypes);
-  }
-
-  public static void setSavedPaintTextures(List<File> savedTextures) {
-    StringBuilder combined = new StringBuilder();
-    for (File savedTexture : savedTextures) {
-      combined.append(savedTexture.getPath());
-      combined.append(File.pathSeparator);
-    }
-    prefs.put(KEY_SAVED_PAINT_TEXTURES, combined.toString());
-  }
-
-  public static List<File> getSavedPaintTextures() {
-    var savedTextures = new ArrayList<File>();
-    String combined = prefs.get(KEY_SAVED_PAINT_TEXTURES, null);
-    if (combined != null) {
-      String[] all = combined.split(File.pathSeparator);
-      for (String s : all) {
-        savedTextures.add(new File(s));
-      }
-    }
-    return savedTextures;
-  }
 }

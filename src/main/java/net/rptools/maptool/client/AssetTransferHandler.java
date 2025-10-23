@@ -35,19 +35,19 @@ public class AssetTransferHandler implements ConsumerListener {
 
       Asset asset = Asset.createAssetDetectType(name, assetData, data);
       if (!asset.getMD5Key().equals(id)) {
-        MapTool.showError("Received an invalid image: " + id);
+        // MapTool.showError("Received an invalid image: " + id);
         return;
       }
       // Install it into our system
       AssetManager.putAsset(asset);
 
     } catch (IOException ioe) {
-      MapTool.showError("Error loading composed asset file: " + id);
+      // MapTool.showError("Error loading composed asset file: " + id);
       return;
     }
     // Remove the temp file
     data.delete();
-    MapTool.getFrame().refresh();
+    
   }
 
   public void assetUpdated(MD5Key id) {

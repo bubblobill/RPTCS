@@ -190,7 +190,6 @@ public class MacroLocation {
       if (token == null) {
         return factory.createUnknownLocation(qMacroName);
       }
-      return factory.createTokenLocation(qMacroName.substring(0, qMacroName.indexOf("@")), token);
     }
 
     if (qMacroNameLower.contains("@lib:")) {
@@ -204,9 +203,6 @@ public class MacroLocation {
       var name = qMacroName.substring(0, qMacroName.indexOf("@"));
       var cfrom = calledFrom;
       if (cfrom == null || cfrom.getSource() == MacroSource.tooltip) { // tooltip is special
-        if (token != null) {
-          cfrom = factory.createTokenLocation(name, token);
-        }
         if (cfrom == null || !cfrom.getSource().allowsAtThis()) {
           return factory.createUnknownLocation(qMacroName);
         }

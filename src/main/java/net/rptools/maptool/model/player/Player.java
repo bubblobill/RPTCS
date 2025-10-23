@@ -14,7 +14,6 @@
  */
 package net.rptools.maptool.model.player;
 
-import net.rptools.lib.cipher.CipherUtil;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.GUID;
 import net.rptools.maptool.server.proto.PlayerDto;
@@ -49,20 +48,13 @@ public class Player {
   private GUID zoneId;
   private boolean loaded;
 
-  private transient CipherUtil.Key password;
+//  private transient CipherUtil.Key password;
   private transient Role actualRole;
 
   public Player() {
     // For serialization
   }
 
-  Player(String name, Role role, CipherUtil.Key password) {
-    this.name = name;
-    this.role = role.name();
-    this.password = password;
-    this.zoneId = null;
-    this.loaded = true;
-  }
 
   protected void setRole(Role role) {
     this.role = role.name();
@@ -116,9 +108,6 @@ public class Player {
     this.name = name;
   }
 
-  public CipherUtil.Key getPassword() {
-    return password;
-  }
 
   /**
    * @return Returns the role.

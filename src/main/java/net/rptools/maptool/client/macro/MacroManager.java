@@ -14,22 +14,17 @@
  */
 package net.rptools.maptool.client.macro;
 
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import net.rptools.lib.StringUtil;
 import net.rptools.maptool.client.MapTool;
 import net.rptools.maptool.client.MapToolMacroContext;
-import net.rptools.maptool.client.functions.exceptions.*;
-import net.rptools.maptool.client.macro.impl.*;
-import net.rptools.maptool.client.ui.MapToolFrame;
-import net.rptools.maptool.client.ui.commandpanel.CommandPanel;
-import net.rptools.maptool.client.ui.zone.renderer.ZoneRenderer;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Token;
 import net.rptools.parser.ParserException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This class manages the slash commands for the client.
@@ -44,9 +39,6 @@ public class MacroManager {
 
   /** The maximum number of times a macro can recurse before it is considered an error. */
   private static final int MAX_RECURSE_COUNT = 10;
-
-  /** An empty macro that is returned when a macro is not found. */
-  private static final Macro UNDEFINED_MACRO = new UndefinedMacro();
 
   /** Map of all slash commands that have been registered. */
   private static final Map<String, Macro> MACROS = new HashMap<>();
@@ -82,42 +74,6 @@ public class MacroManager {
       String addOnNamespace,
       String addOnName) {}
 
-  static {
-    registerMacro(new SayMacro());
-    registerMacro(new HelpMacro());
-    registerMacro(new GotoMacro());
-    registerMacro(new ClearMacro());
-    registerMacro(new RollMeMacro());
-    registerMacro(new RollAllMacro());
-    registerMacro(new RollGMMacro());
-    registerMacro(new WhisperMacro());
-    registerMacro(new EmoteMacro());
-    registerMacro(new AliasMacro());
-    registerMacro(new LoadAliasesMacro());
-    registerMacro(new SaveAliasesMacro());
-    registerMacro(new ClearAliasesMacro());
-    registerMacro(new AddTokenStateMacro());
-    registerMacro(new LoadTokenStatesMacro());
-    registerMacro(new SaveTokenStatesMacro());
-    registerMacro(new SetTokenStateMacro());
-    registerMacro(new SetTokenPropertyMacro());
-    registerMacro(new RollSecretMacro());
-    registerMacro(new EmitMacro());
-    registerMacro(new SelfMacro());
-    registerMacro(new ImpersonateMacro());
-    registerMacro(new RunTokenMacroMacro());
-    registerMacro(new RunTokenSpeechMacro());
-    registerMacro(new LookupTableMacro());
-    registerMacro(new ToGMMacro());
-    registerMacro(new OOCMacro());
-    registerMacro(new ChangeColorMacro());
-    registerMacro(new WhisperReplyMacro());
-    registerMacro(new EmotePossessiveMacro());
-    registerMacro(new TextureNoise());
-    registerMacro(new VersionMacro());
-    registerMacro(new AboutMacro());
-    registerMacro(UNDEFINED_MACRO);
-  }
 
   /**
    * This method is used to set the alias for a slash command.
@@ -244,7 +200,7 @@ public class MacroManager {
   private static Macro getRegisteredMacro(String name) {
     Macro ret = MACROS.get(name);
     if (ret == null) {
-      return UNDEFINED_MACRO;
+      return null;// UNDEFINED_MACRO;
     }
     return ret;
   }
@@ -265,120 +221,6 @@ public class MacroManager {
     }
   }
 
-  /**
-   * This method is used to execute a macro.
-   *
-   * @param command The command to execute.
-   */
-  public static void executeMacro(String command) {
-    executeMacro(command, null);
-  }
-
-  /**
-   * This method is used to execute a macro.
-   *
-   * @param command The command to execute.
-   * @param macroExecutionContext The context in which the macro is being executed.
-   */
-  public static void executeMacro(String command, MapToolMacroContext macroExecutionContext) {
-    MacroContext context = new MacroContext();
-    context.addTransform(command);
-    String macroButtonName =
-        macroExecutionContext == null
-            ? "chat"
-            : macroExecutionContext.getName() + "@" + macroExecutionContext.getSource();
-
-    try {
-      command = preprocess(command);
-      context.addTransform(command);
-
-      int recurseCount = 0;
-      while (recurseCount < MAX_RECURSE_COUNT) {
-        recurseCount++;
-
-        command = command.trim();
-        if (command.length() == 0) {
-          return;
-        }
-        if (command.charAt(0) == '/') {
-          command = command.substring(1);
-        } else {
-          // Default to a say
-          command = "s " + command;
-        }
-
-        // Macro name is the first word
-        List<String> cmd = StringUtil.splitNextWord(command);
-        String key = cmd.get(0);
-        String details = cmd.size() > 1 ? cmd.get(1) : "";
-
-        Macro macro = getRegisteredMacro(key);
-        MacroDefinition def = macro.getClass().getAnnotation(MacroDefinition.class);
-
-        boolean trustedPath = macroExecutionContext != null && macroExecutionContext.isTrusted();
-
-        // Preprocess line if required.
-        if (def == null || def.expandRolls()) {
-          Token tokenInContext = null;
-          ZoneRenderer zr = MapTool.getFrame().getCurrentZoneRenderer();
-          if (zr != null) {
-            final MapToolFrame frame = MapTool.getFrame();
-            final CommandPanel cpanel = frame.getCommandPanel();
-            if (cpanel.getIdentityGUID() != null)
-              tokenInContext = zr.getZone().getToken(cpanel.getIdentityGUID());
-            else tokenInContext = zr.getZone().resolveToken(cpanel.getIdentity());
-          }
-          details = MapTool.getParser().parseLine(tokenInContext, details, macroExecutionContext);
-          trustedPath = MapTool.getParser().isMacroPathTrusted();
-        }
-        context.addTransform(key + " " + details);
-        postprocess(details);
-
-        context.addTransform(key + " " + details);
-        if (macro != UNDEFINED_MACRO) {
-          executeMacro(context, macro, details, macroExecutionContext);
-          return;
-        }
-
-        // Is it an alias ?
-        var mdet = findAlias(key);
-        if (mdet == null || mdet.isEmpty()) {
-          executeMacro(context, UNDEFINED_MACRO, command, macroExecutionContext);
-          return;
-        }
-
-        if (mdet.size() > 1) {
-          printAmbiguousAliasMessage(key);
-          return;
-        }
-        String alias = mdet.get(0).command();
-        command = resolveAlias(alias, details);
-        context.addTransform(command);
-        continue;
-      }
-    } catch (AbortFunctionException | ReturnFunctionException fe) {
-      // Do nothing, just silently exit
-      return;
-    } catch (JavascriptFunctionException | AssertFunctionException afe) {
-      MapTool.addLocalMessage(afe.getMessage());
-      return;
-    } catch (ParserException e) {
-      e.addMacro(macroButtonName);
-      MapTool.addErrorMessage(e);
-      // These are not errors to worry about as they are usually user input errors so no need to log
-      // them.
-      return;
-    } catch (Exception e) {
-      MapTool.addLocalMessage(
-          I18N.getText("macromanager.couldNotExecute", command, e.getMessage()));
-      log.warn("Exception executing command: " + command);
-      log.warn(e.getStackTrace());
-      return;
-    }
-
-    // We'll only get here if the recurseCount is exceeded
-    MapTool.addLocalMessage(I18N.getText("macromanager.tooManyResolves", command));
-  }
 
   private static List<MacroDetails> findAlias(String key) {
     // First check for a complete match
@@ -406,7 +248,7 @@ public class MacroManager {
   }
 
   private static void printAmbiguousAliasMessage(String alias) {
-    MapTool.addLocalMessage(I18N.getText("macromanager.ambiguous", alias));
+//    MapTool.addLocalMessage(I18N.getText("macromanager.ambiguous", alias));
     var def = aliasMap.get(alias);
     var sb = new StringBuilder();
     sb.append("<ul>");
@@ -423,7 +265,7 @@ public class MacroManager {
       }
     }
     sb.append("</l>");
-    MapTool.addLocalMessage(sb.toString());
+//    MapTool.addLocalMessage(sb.toString());
   }
 
   /**

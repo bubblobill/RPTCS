@@ -14,7 +14,7 @@
  */
 package net.rptools.maptool.client.ui.theme;
 
-import com.formdev.flatlaf.extras.FlatSVGIcon;
+//import com.formdev.flatlaf.extras.FlatSVGIcon;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,9 +22,11 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.TreeSet;
 import javax.swing.*;
+
+import net.rptools.SVGIcon;
 import net.rptools.lib.image.ImageUtil;
+import net.rptools.lib.image.RenderQuality;
 import net.rptools.maptool.client.AppPreferences;
-import net.rptools.maptool.client.swing.ImageBorder;
 import org.javatuples.Triplet;
 
 public class RessourceManager {
@@ -491,17 +493,7 @@ public class RessourceManager {
   private static HashMap<Triplet<String, Integer, Integer>, ImageIcon> iconCache = new HashMap<>();
   private static HashMap<String, BufferedImage> imageCache = new HashMap<>();
   private static HashMap<String, javafx.scene.image.Image> fxImageCache = new HashMap<>();
-  private static HashMap<String, ImageBorder> borderCache = new HashMap<>();
 
-  public static ImageBorder getBorder(Borders border) {
-    return getFromHashMapsAndCache(
-        border, borderCache, path -> new ImageBorder(path), path -> path, borders);
-  }
-
-  public static javafx.scene.image.Image getFxImage(Images image) {
-    return getFromHashMapsAndCache(
-        image, fxImageCache, path -> new javafx.scene.image.Image(path), path -> path, images);
-  }
 
   public static BufferedImage getImage(Images image) {
     return getFromHashMapsAndCache(
@@ -534,10 +526,7 @@ public class RessourceManager {
   }
 
   private static ImageIcon getIcon(Icons icon, int width, int height) {
-    var iconPaths = classicIcons;
-    switch (AppPreferences.iconTheme.get()) {
-      case ROD_TAKEHARA -> iconPaths = rodIcons;
-    }
+    var iconPaths = rodIcons;
 
     return getFromHashMapsAndCache(
         icon,
@@ -545,7 +534,7 @@ public class RessourceManager {
         iconPath -> {
           try {
             if (iconPath.endsWith(".svg")) {
-              return new FlatSVGIcon(iconPath, width, height);
+              return new SVGIcon(iconPath, width, height);
             } else {
               // for non-svg we assume that they already have to correct size, unless they are to
               // big
@@ -553,7 +542,7 @@ public class RessourceManager {
               if (image.getWidth(null) > width || image.getHeight(null) > height)
                 image =
                     ImageUtil.createCompatibleImage(
-                        image, width, height, AppPreferences.renderQuality.get());
+                        image, width, height, RenderQuality.MEDIUM_SCALING);
               return new ImageIcon(image);
             }
           } catch (IOException e) {

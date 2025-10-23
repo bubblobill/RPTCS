@@ -14,19 +14,27 @@
  */
 package net.rptools.maptool.model;
 
-import static org.apache.tika.metadata.TikaCoreProperties.RESOURCE_NAME_KEY;
-
+import com.google.common.net.MediaType;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.protobuf.ByteString;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamConverter;
+import net.rptools.lib.MD5Key;
+import net.rptools.lib.image.ImageUtil;
+import net.rptools.maptool.model.library.addon.AddOnLibraryImporter;
+import net.rptools.maptool.server.proto.AssetDto;
+import net.rptools.maptool.server.proto.AssetDtoType;
+import net.rptools.maptool.util.HandlebarsUtil;
+import org.apache.commons.io.FilenameUtils;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -35,26 +43,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.BiFunction;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import net.rptools.lib.MD5Key;
-import net.rptools.lib.image.ImageUtil;
-import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.model.library.addon.AddOnLibraryImporter;
-import net.rptools.maptool.server.proto.AssetDto;
-import net.rptools.maptool.server.proto.AssetDtoType;
-import net.rptools.maptool.util.HandlebarsUtil;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.tika.config.TikaConfig;
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.io.TikaInputStream;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.mime.MediaType;
 
 /** Asset used in the campaign. */
 public final class Asset {
-
+    public static final MediaType UNKNOWN = MediaType.create(MediaType.ANY_APPLICATION_TYPE.type(), "unknown");
   /** The type of {@code Asset}. */
   public enum Type {
 
@@ -156,9 +148,9 @@ public final class Asset {
      * @return the {@code Type}.
      */
     public static Type fromMediaType(MediaType mediaType, String filename) {
-      String contentType = mediaType.getType();
+      String contentType = mediaType.type();
 
-      String subType = mediaType.getSubtype();
+      String subType = mediaType.subtype();
       return switch (contentType) {
         case "audio" -> Type.AUDIO;
         case "image" -> Type.IMAGE;
@@ -209,7 +201,6 @@ public final class Asset {
   public static final String BROKEN_IMAGE_NAME = "broken";
 
   /** The MD5 Sum of this {@code Asset}. */
-  @XStreamAlias("id") // Maintain comparability...
   private final MD5Key md5Key;
 
   /** The name of the {@code Asset}. */
@@ -233,7 +224,6 @@ public final class Asset {
   private final transient JsonElement json;
 
   /** The data that makes up the {@code Asset}. */
-  @XStreamConverter(AssetImageConverter.class)
   private final transient byte[] data;
 
   /**
@@ -669,7 +659,7 @@ public final class Asset {
         }
       }
     } catch (IOException e) {
-      MapTool.showError("IOException?!", e); // Can this happen??
+      // MapTool.showError("IOException?!", e); // Can this happen??
     }
     return ext;
   }
@@ -780,23 +770,19 @@ public final class Asset {
     }
   }
 
-  private static MediaType getMediaType(String filename, TikaInputStream tis) throws IOException {
-    Metadata metadata = new Metadata();
-    metadata.set(RESOURCE_NAME_KEY, filename);
+  private static MediaType getMediaType(String filename, InputStream tis) throws IOException {
     try {
-      TikaConfig tika = new TikaConfig();
-      MediaType mediaType = tika.getDetector().detect(tis, metadata);
+      MediaType mediaType = MediaType.parse(URLConnection.guessContentTypeFromName(filename));
 
       /* Workaround for Tika seeing Javascript files as Matlab scripts */
       if ("text/x-matlab".equals(mediaType.toString())) {
         String ext = FilenameUtils.getExtension(filename);
         if ("js".equals(ext) || "javascript".equals(ext))
-          mediaType = new MediaType("text", "javascript");
+          mediaType = MediaType.create("text", "javascript");
       }
       return mediaType;
-
-    } catch (TikaException e) {
-      throw new IOException(e);
+      } catch (Exception e){
+        return UNKNOWN;
     }
   }
 
@@ -809,20 +795,9 @@ public final class Asset {
    * @throws IOException when an error occurs.
    */
   public static MediaType getMediaType(String filename, byte[] bytes) throws IOException {
-    return getMediaType(filename, TikaInputStream.get(bytes));
+    return getMediaType(filename, new ByteArrayInputStream(bytes));
   }
 
-  /**
-   * Detects and returns the {@link MediaType} for an {@link InputStream}.
-   *
-   * @param filename the name of the file that corresponds to the {@link InputStream}.
-   * @param is the {@link InputStream} to determine the {@link MediaType} of.
-   * @return the detected {@link MediaType}.
-   * @throws IOException when an error occurs.
-   */
-  public static MediaType getMediaType(String filename, InputStream is) throws IOException {
-    return getMediaType(filename, TikaInputStream.get(is));
-  }
 
   /**
    * Detects and returns the {@link MediaType} for a {@link URL}.
@@ -832,7 +807,7 @@ public final class Asset {
    * @throws IOException when an error occurs.
    */
   public static MediaType getMediaType(URL url) throws IOException {
-    return getMediaType(url.getFile(), TikaInputStream.get(url));
+    return getMediaType(url.getFile(), url.openStream());
   }
 
   /**

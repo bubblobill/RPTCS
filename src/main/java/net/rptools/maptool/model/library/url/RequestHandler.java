@@ -130,42 +130,17 @@ public class RequestHandler {
       responseHeaders.put("Content-Type", "text/html");
       responseHeaders.put(":Status", "200 OK");
 
-      final MapToolVariableResolver resolver = new MapToolVariableResolver(null);
       c =
           new ThreadExecutionHelper<String>()
               .runOnSwingThread(
                   () -> {
-                    String macroName;
-                    if ("lib".equalsIgnoreCase(uri.getScheme())) {
-                      macroName = uri.toString();
-                    } else {
-                      macroName = uri.getSchemeSpecificPart();
-                    }
-
-                    resolver.setVariable("macro.requestHeaders", gson.toJsonTree(requestHeaders));
-                    resolver.setVariable("macro.responseHeaders", gson.toJsonTree(responseHeaders));
-                    String line = MapTool.getParser().runMacro(resolver, null, macroName, body);
-                    return line;
+                    return null;
                   })
               .thenApply(
                   (String r) -> {
                     try {
                       HashMap<String, String> returnedHeaders;
-                      Object headerObj = resolver.getVariable("macro.responseHeaders");
 
-                      if (headerObj instanceof JsonObject headerJson) {
-                        returnedHeaders =
-                            gson.fromJson(
-                                headerJson, new TypeToken<HashMap<String, String>>() {}.getType());
-                      } else {
-                        String headerString = headerObj.toString();
-                        returnedHeaders =
-                            gson.fromJson(
-                                headerString,
-                                new TypeToken<HashMap<String, String>>() {}.getType());
-                      }
-
-                      responseHeaders.putAll(returnedHeaders);
                     } catch (Exception pe) {
                       responseHeaders.put(
                           ":Status", "500 Internal Exception (bad response header)");

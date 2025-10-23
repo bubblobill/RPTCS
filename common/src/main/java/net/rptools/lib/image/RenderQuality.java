@@ -14,7 +14,6 @@
  */
 package net.rptools.lib.image;
 
-import com.twelvemonkeys.image.ResampleOp;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
@@ -64,11 +63,4 @@ public enum RenderQuality {
     }
   }
 
-  public int getResampleOpFilter() {
-    return switch (this) {
-      case LOW_SCALING, PIXEL_ART_SCALING -> ResampleOp.FILTER_POINT;
-      case MEDIUM_SCALING -> ResampleOp.FILTER_TRIANGLE;
-      case HIGH_SCALING -> ResampleOp.FILTER_QUADRATIC;
-    };
-  }
 }

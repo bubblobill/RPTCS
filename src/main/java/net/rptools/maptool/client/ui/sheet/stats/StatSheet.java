@@ -21,6 +21,7 @@ import net.rptools.maptool.client.AppConstants;
 import net.rptools.maptool.client.MapTool;
 import net.rptools.maptool.client.ui.htmlframe.HTMLContent;
 import net.rptools.maptool.model.Token;
+import net.rptools.maptool.model.player.Player;
 import net.rptools.maptool.model.sheet.stats.StatSheetContext;
 import net.rptools.maptool.model.sheet.stats.StatSheetLocation;
 import net.rptools.maptool.util.HandlebarsUtil;
@@ -43,47 +44,47 @@ public class StatSheet {
    */
   public void setContent(Token token, String content, URL entry, StatSheetLocation location) {
     try {
-      var statSheetContext = new StatSheetContext(token, MapTool.getPlayer(), location);
+      var statSheetContext = new StatSheetContext(token, new Player(), location);
       var output =
           HTMLContent.htmlFromString(new HandlebarsUtil<>(content, entry).apply(statSheetContext))
               .injectURLBase(entry);
-      Platform.runLater(
-          () -> {
-            var overlay =
-                MapTool.getFrame()
-                    .getOverlayPanel()
-                    .getOverlay(AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME);
-            if (overlay != null) {
-              overlay.updateContents(output, true);
-              overlay.setVisible(true);
-            } else {
-              MapTool.getFrame()
-                  .getOverlayPanel()
-                  .showOverlay(
-                      AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME,
-                      Integer.MAX_VALUE,
-                      Boolean.TRUE,
-                      output,
-                      null);
-            }
-          });
+//      Platform.runLater(
+//          () -> {
+//            var overlay =
+//                null
+//                    .getOverlayPanel()
+//                    .getOverlay(AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME);
+//            if (overlay != null) {
+//              overlay.updateContents(output, true);
+//              overlay.setVisible(true);
+//            } else {
+//              null
+//                  .getOverlayPanel()
+//                  .showOverlay(
+//                      AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME,
+//                      Integer.MAX_VALUE,
+//                      Boolean.TRUE,
+//                      output,
+//                      null);
+//            }
+//          });
     } catch (IOException e) {
-      MapTool.showError("msg.error.renderingStatSheet", e);
+      // MapTool.showError("msg.error.renderingStatSheet", e);
     }
   }
 
   /** Clears the content of the stat sheet. */
   public void clearContent() {
-    Platform.runLater(
-        () -> {
-          var overlay =
-              MapTool.getFrame()
-                  .getOverlayPanel()
-                  .getOverlay(AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME);
-          if (overlay != null) {
-            overlay.setVisible(false);
-            overlay.updateContents(HTMLContent.htmlFromString(""), true);
-          }
-        });
+//    Platform.runLater(
+//        () -> {
+//          var overlay =
+//              null
+//                  .getOverlayPanel()
+//                  .getOverlay(AppConstants.INTERNAL_MAP_UNDER_POINTER_HTML_OVERLAY_NAME);
+//          if (overlay != null) {
+//            overlay.setVisible(false);
+//            overlay.updateContents(HTMLContent.htmlFromString(""), true);
+//          }
+//        });
   }
 }

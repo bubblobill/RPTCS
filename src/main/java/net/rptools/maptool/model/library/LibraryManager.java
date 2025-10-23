@@ -34,7 +34,6 @@ import net.rptools.maptool.model.library.addon.AddOnSlashCommandManager;
 import net.rptools.maptool.model.library.addon.TransferableAddOnLibrary;
 import net.rptools.maptool.model.library.builtin.BuiltInLibraryManager;
 import net.rptools.maptool.model.library.proto.AddOnLibraryListDto;
-import net.rptools.maptool.model.library.token.LibraryTokenManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -68,15 +67,11 @@ public class LibraryManager {
   /** Drop in libraries */
   private static final AddOnLibraryManager addOnLibraryManager = new AddOnLibraryManager();
 
-  /** Library Tokens. */
-  private static final LibraryTokenManager libraryTokenManager = new LibraryTokenManager();
-
   /** Listener for dealing with add-on slash commands. */
   private static final AddOnSlashCommandManager addOnSlashCommandManager =
       new AddOnSlashCommandManager();
 
   public static void init() {
-    libraryTokenManager.init();
     builtInLibraryManager.loadBuiltIns();
     new MapToolEventBus().getMainEventBus().register(addOnSlashCommandManager);
   }
@@ -128,8 +123,6 @@ public class LibraryManager {
     } else if (addOnLibraryManager.handles(path)) {
       return CompletableFuture.completedFuture(
           Optional.ofNullable(addOnLibraryManager.getLibrary(path)));
-    } else if (libraryTokenManager.handles(path)) {
-      return libraryTokenManager.getLibrary(path);
     } else {
       return CompletableFuture.completedFuture(Optional.empty());
     }
@@ -142,12 +135,9 @@ public class LibraryManager {
    * @return {@code true} if the library exists {@code false} if it does not.
    */
   public CompletableFuture<Boolean> libraryExists(URL path) {
-    if (libraryTokenManager.handles(path)) {
-      return libraryTokenManager.getLibrary(path).thenApply(Optional::isPresent);
-    } else {
+
       return CompletableFuture.completedFuture(Boolean.FALSE);
     }
-  }
 
   /**
    * Checks if the current namespace has an add-on library registered.
@@ -167,10 +157,8 @@ public class LibraryManager {
   public boolean registerAddOnLibrary(AddOnLibrary addOn) {
     try {
       addOnLibraryManager.registerLibrary(addOn);
-      if (MapTool.isHostingServer()) {
-        MapTool.serverCommand().addAddOnLibrary(List.of(new TransferableAddOnLibrary(addOn)));
-      }
-    } catch (ExecutionException | InterruptedException | IllegalStateException e) {
+
+    } catch ( IllegalStateException e) {
       log.error("Error registering add-on in library", e);
       return false;
     }
@@ -184,9 +172,7 @@ public class LibraryManager {
    */
   public void deregisterAddOnLibrary(String namespace) {
     addOnLibraryManager.deregisterLibrary(namespace);
-    if (MapTool.isHostingServer()) {
-      MapTool.serverCommand().removeAddOnLibrary(List.of(namespace));
-    }
+
   }
 
   /**
@@ -198,10 +184,7 @@ public class LibraryManager {
     try {
       addOnLibraryManager.deregisterLibrary(addOnLibrary.getNamespace().get());
       addOnLibraryManager.registerLibrary(addOnLibrary);
-      if (MapTool.isHostingServer()) {
-        MapTool.serverCommand()
-            .addAddOnLibrary(List.of(new TransferableAddOnLibrary(addOnLibrary)));
-      }
+
     } catch (InterruptedException | ExecutionException e) {
       log.error("Error registering add-on in library", e);
       return false;
@@ -221,7 +204,7 @@ public class LibraryManager {
       throws ExecutionException, InterruptedException {
     List<Library> libraries =
         switch (libraryType) {
-          case TOKEN -> libraryTokenManager.getLibraries().get();
+          case TOKEN -> new ArrayList<>();
           case ADD_ON -> addOnLibraryManager.getLibraries();
           case BUILT_IN -> builtInLibraryManager.getLibraries();
         };
@@ -285,9 +268,7 @@ public class LibraryManager {
     if (lib == null) {
       lib = addOnLibraryManager.getLibrary(namespace);
     }
-    if (lib == null) {
-      lib = libraryTokenManager.getLibrary(namespace).join();
-    }
+
 
     if (lib == null) {
       return Optional.empty();
@@ -307,15 +288,12 @@ public class LibraryManager {
   /** de-registers all libraries from the library manager. */
   public void deregisterAllLibraries() {
     deregisterAddOnLibraries();
-    libraryTokenManager.clearLibraries();
   }
 
   /** de-registers all the add-on in libraries. */
   public void deregisterAddOnLibraries() {
     addOnLibraryManager.removeAllLibraries();
-    if (MapTool.isHostingServer()) {
-      MapTool.serverCommand().removeAllAddOnLibraries();
-    }
+
   }
 
   /**
@@ -370,16 +348,10 @@ public class LibraryManager {
     return CompletableFuture.supplyAsync(
         () -> {
           var addons = addOnLibraryManager.getLegacyEventTargets(eventName).join();
-          var tokens = libraryTokenManager.getLegacyEventTargets(eventName).join();
           var libs = new HashSet<Library>(addons);
           var addonLibNamespaces =
               addons.stream().map(Library::getNamespace).collect(Collectors.toSet());
-          // Only add lib:tokens if there are no addon libraries with the same namespace
-          for (var token : tokens) {
-            if (!addonLibNamespaces.contains(token.getNamespace())) {
-              libs.add(token);
-            }
-          }
+
           return new ArrayList<>(libs);
         });
   }

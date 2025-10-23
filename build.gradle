@@ -351,7 +351,7 @@ dependencies {
     implementation project(':messages')
 
     implementation(libs.bundles.log4j)
-    implementation(libs.slf4j.simple)
+//    implementation(libs.slf4j.simple)
     implementation(libs.apache.commons.logging)
     implementation(libs.bundles.sentry)
 
@@ -359,12 +359,12 @@ dependencies {
     implementation(libs.upnplib)
     implementation(libs.okhttp)
 
-    implementation(libs.bundles.imageio)
-    implementation(libs.batik)
-    implementation(libs.bundles.pdfbox)
-    implementation(libs.bcmail)
-    implementation(libs.bundles.jai.imageio)
-    implementation(libs.webp.imageio)
+//    implementation(libs.bundles.imageio)
+//    implementation(libs.batik)
+//    implementation(libs.bundles.pdfbox)
+//    implementation(libs.bcmail)
+//    implementation(libs.bundles.jai.imageio)
+//    implementation(libs.webp.imageio)
 
     implementation(libs.bundles.jide) // Currently hosted on nerps.net/repo
     implementation(libs.fifesoft.rsyntaxtexxtarea)
@@ -373,7 +373,7 @@ dependencies {
     implementation(libs.fifesoft.languagesupport)
     implementation(libs.bundles.flatlaf)
     implementation(libs.tinylaf.nocp)
-    implementation(libs.jsvg)
+//    implementation(libs.jsvg)
 
     implementation(libs.bundles.handlebars)
 
@@ -384,8 +384,8 @@ dependencies {
     implementation(libs.apache.commons.cli)
     implementation(libs.apache.commons.lang)
     implementation(libs.apache.commons.beanutils)
-    implementation(libs.apache.commons.jxpath)
-    implementation(libs.apache.tika)
+//    implementation(libs.apache.commons.jxpath)
+//    implementation(libs.apache.tika)
 
     implementation(libs.gson)
 
@@ -402,13 +402,13 @@ dependencies {
 
     implementation(libs.javatuples)
     implementation(libs.guava)
-    implementation(libs.jts.core)
-    implementation(libs.jgrapht.core)
+//    implementation(libs.jts.core)
+//    implementation(libs.jgrapht.core)
     implementation(libs.flexmark.all)
     implementation(libs.reflections)
     implementation(libs.yasb)
 
-    implementation(libs.bundles.graalvm.js)
+//    implementation(libs.bundles.graalvm.js)
 
     forms(libs.intellij.forms.tasks)
     implementation(libs.intellij.forms.runtime)
@@ -417,13 +417,14 @@ dependencies {
     implementation(libs.rptools.maptool.resources)
     implementation(libs.rptools.parser)
     implementation(libs.rptools.maptool.addons)
-    implementation(libs.rptools.dice.roller)
-    implementation(libs.noiselib)
+//    implementation(libs.rptools.dice.roller)
+//    implementation(libs.noiselib)
 
     // libgdx
-    implementation(libs.bundles.gdx)
-    implementation(variantOf(libs.gdx.platform) { classifier('natives-desktop')})
-    implementation(variantOf(libs.gdx.freetype.platform) { classifier('natives-desktop')})
+//    implementation(libs.bundles.gdx)
+//    implementation(variantOf(libs.gdx.platform) { classifier('natives-desktop')})
+//    implementation(variantOf(libs.gdx.freetype.platform) { classifier('natives-desktop')})
+    implementation 'io.github.bweng20:jSVGIcon:1.6'
 }
 
 processResources {

@@ -79,9 +79,6 @@ public class AssetManager {
    * A list of listeners which should be notified when the asset associated with a given MD5 sum has
    * finished downloading.
    */
-  private static Map<MD5Key, List<AssetAvailableListener>> assetListenerListMap =
-      new ConcurrentHashMap<MD5Key, List<AssetAvailableListener>>();
-
   /** Property string associated with asset name */
   public static final String NAME = "name";
 
@@ -120,24 +117,7 @@ public class AssetManager {
    * campaign.
    */
   public static void updateRepositoryList() {
-    List<String> invalidRepos = new ArrayList<>();
-    assetLoader.removeAllRepositories();
-    for (String repo : MapTool.getCampaign().getRemoteRepositoryList()) {
-      if (!assetLoader.addRepository(repo)) {
-        invalidRepos.add(repo);
-      }
-    }
 
-    if (!invalidRepos.isEmpty()) {
-      if (MapTool.isHostingServer()) {
-        String tab = "    ";
-        String repos = tab + String.join("\n" + tab, invalidRepos);
-        MapTool.showError(I18N.getText("msg.error.host.inaccessibleRepo", repos));
-      } else {
-        invalidRepos.forEach(
-            repo -> MapTool.addLocalMessage(I18N.getText("msg.error.inaccessibleRepo", repo)));
-      }
-    }
   }
 
   /**
@@ -147,38 +127,7 @@ public class AssetManager {
    * @param key MD5Key of the asset
    * @param listeners Listener to notify when the asset is done loading
    */
-  public static void addAssetListener(MD5Key key, AssetAvailableListener... listeners) {
 
-    if (listeners == null || listeners.length == 0) {
-      return;
-    }
-
-    List<AssetAvailableListener> listenerList =
-        assetListenerListMap.computeIfAbsent(key, k -> new LinkedList<AssetAvailableListener>());
-
-    for (AssetAvailableListener listener : listeners) {
-      if (!listenerList.contains(listener)) {
-        listenerList.add(listener);
-      }
-    }
-  }
-
-  public static void removeAssetListener(MD5Key key, AssetAvailableListener... listeners) {
-
-    if (listeners == null || listeners.length == 0) {
-      return;
-    }
-
-    List<AssetAvailableListener> listenerList = assetListenerListMap.get(key);
-    if (listenerList == null) {
-      // Nothing to do
-      return;
-    }
-
-    for (AssetAvailableListener listener : listeners) {
-      listenerList.remove(listener);
-    }
-  }
 
   /**
    * Determine if the asset manager has the asset. This does not tell you if the asset is done
@@ -252,44 +201,6 @@ public class AssetManager {
     // Clear the waiting status
     assetLoader.completeRequest(asset.getMD5Key());
 
-    // Listeners
-    List<AssetAvailableListener> listenerList = assetListenerListMap.get(asset.getMD5Key());
-    if (listenerList != null) {
-      for (AssetAvailableListener listener : listenerList) {
-        listener.assetAvailable(asset.getMD5Key());
-      }
-
-      assetListenerListMap.remove(asset.getMD5Key());
-    }
-  }
-
-  /**
-   * Similar to getAsset(), but does not block. It will always use the listeners to pass the data
-   *
-   * @param id MD5 of the asset requested
-   * @param listeners instances of {@link AssetAvailableListener} that will be notified when the
-   *     asset is available
-   */
-  public static void getAssetAsynchronously(
-      final MD5Key id, final AssetAvailableListener... listeners) {
-
-    assetLoaderThreadPool.submit(
-        () -> {
-          Asset asset = getAsset(id);
-
-          // Simplest case, we already have it
-          if (asset != null && asset.getData() != null && asset.getData().length > 0) {
-            for (AssetAvailableListener listener : listeners) {
-              listener.assetAvailable(id);
-            }
-
-            return;
-          }
-
-          // Let's get it from the server
-          // As a last resort we request the asset from the server
-          requestAssetFromServer(id, listeners);
-        });
   }
 
   /**
@@ -393,19 +304,6 @@ public class AssetManager {
     }
 
     usePersistentCache = enable;
-  }
-
-  /**
-   * Request that the asset be loaded from the server
-   *
-   * @param id MD5 of the asset to load from the server
-   */
-  private static void requestAssetFromServer(MD5Key id, AssetAvailableListener... listeners) {
-
-    if (id != null) {
-      addAssetListener(id, listeners);
-      assetLoader.requestAsset(id);
-    }
   }
 
   /**
@@ -716,14 +614,7 @@ public class AssetManager {
     }
     Asset asset = null;
     final CountDownLatch loadLatch = new CountDownLatch(1);
-    getAssetAsynchronously(
-        assetId,
-        (key) -> {
-          // If we're here then the image has just finished loading
-          // release the blocked thread
-          log.debug("Countdown: " + assetId);
-          loadLatch.countDown();
-        });
+
     if (asset == null) {
       try {
         log.debug("Wait for:  " + assetId);
@@ -796,9 +687,6 @@ public class AssetManager {
       }
       try {
         if (fileFilter.accept(rootDir, file.getName())) {
-          if (MapTool.getFrame() != null) {
-            MapTool.getFrame().setStatusMessage("Caching image reference: " + file.getName());
-          }
           rememberLocalImageReference(file);
         }
       } catch (IOException ioe) {
@@ -806,8 +694,8 @@ public class AssetManager {
       }
     }
     // Done
-    if (MapTool.getFrame() != null) {
-      MapTool.getFrame().setStatusMessage("");
+    if (null != null) {
+
     }
   }
 

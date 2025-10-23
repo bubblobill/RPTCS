@@ -10,7 +10,7 @@ dependencies {
     implementation(libs.findbugs.jsr305)
 
     implementation(libs.bundles.log4j)
-    implementation(libs.slf4j.simple)
+//    implementation(libs.slf4j.simple)
     implementation(libs.apache.commons.logging)
 
     implementation(libs.gson)

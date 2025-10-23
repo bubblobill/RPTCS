@@ -26,14 +26,11 @@ import java.awt.event.ActionEvent;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Stream;
-import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
-import net.rptools.maptool.client.ui.MapToolFrame;
+
 import net.rptools.maptool.client.ui.theme.Icons;
 import net.rptools.maptool.client.ui.theme.RessourceManager;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Token;
-import net.rptools.maptool.util.FunctionUtil;
 import net.rptools.parser.ParserException;
 
 /**
@@ -152,27 +149,27 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
       }
     } else {
       // Make sure there isn't a name conflict with the normal MT frames
-      boolean isMtframeName =
-          Stream.of(MapToolFrame.MTFrame.values())
-                  .filter(e -> e.name().equals(name))
-                  .findFirst()
-                  .orElse(null)
-              != null;
-      if (isMtframeName) {
-        String opt = isHTML5 ? "frame5" : "frame";
-        throw new ParserException(I18N.getText("lineParser.optReservedName", opt, name));
-      }
+//      boolean isMtframeName =
+//          Stream.of(MapToolFrame.MTFrame.values())
+//                  .filter(e -> e.name().equals(name))
+//                  .findFirst()
+//                  .orElse(null)
+//              != null;
+//      if (isMtframeName) {
+//        String opt = isHTML5 ? "frame5" : "frame";
+//        throw new ParserException(I18N.getText("lineParser.optReservedName", opt, name));
+//      }
 
       // Only set size on creation so we don't override players resizing.
-      frame = new HTMLFrame(name, width, height, isHTML5);
-      frames.put(name, frame);
+//      frame = new HTMLFrame(name, width, height, isHTML5);
+//      frames.put(name, frame);
 
-      frame.getDockingManager().showFrame(name);
+//      frame.getDockingManager().showFrame(name);
       // Jamz: why undock frames to center them?
-      if (!frame.isDocked()) center(name);
+//      if (!frame.isDocked()) center(name);
     }
-    frame.updateContents(htmlContent, title, tabTitle, temp, scrollReset, isHTML5, val);
-    return frame;
+//    frame.updateContents(htmlContent, title, tabTitle, temp, scrollReset, isHTML5, val);
+    return null;
   }
 
   @Override
@@ -235,15 +232,15 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
      * Note: There should be no risk of MT frames being removed, as that is checked
      * for in showFrame() (the only place this constructor is called)
      */
-    DockingManager dm = MapTool.getFrame().getDockingManager();
-    if (dm.getFrame(name) != null) {
-      // The frame needs to be shown before being removed otherwise the layout gets messed up
-      dm.showFrame(name);
-      dm.removeFrame(name, true);
-    }
+//    DockingManager dm = null.getDockingManager();
+//    if (dm.getFrame(name) != null) {
+//      // The frame needs to be shown before being removed otherwise the layout gets messed up
+//      dm.showFrame(name);
+//      dm.removeFrame(name, true);
+//    }
     /* /Issue #2485 */
 
-    dm.addFrame(this);
+//    dm.addFrame(this);
     this.setVisible(true);
     addDockableFrameListener(
         new DockableFrameAdapter() {
@@ -264,14 +261,14 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
       return;
     }
     HTMLFrame frame = frames.get(name);
-    Dimension outerSize = MapTool.getFrame().getSize();
+//    Dimension outerSize = null.getSize();
+//
+//    int x = null.getLocation().x + (outerSize.width - frame.getWidth()) / 2;
+//    int y = null.getLocation().y + (outerSize.height - frame.getHeight()) / 2;
 
-    int x = MapTool.getFrame().getLocation().x + (outerSize.width - frame.getWidth()) / 2;
-    int y = MapTool.getFrame().getLocation().y + (outerSize.height - frame.getHeight()) / 2;
-
-    Rectangle rect =
-        new Rectangle(Math.max(x, 0), Math.max(y, 0), frame.getWidth(), frame.getHeight());
-    MapTool.getFrame().getDockingManager().floatFrame(frame.getKey(), rect, true);
+//    Rectangle rect =
+//        new Rectangle(Math.max(x, 0), Math.max(y, 0), frame.getWidth(), frame.getHeight());
+//    null.getDockingManager().floatFrame(frame.getKey(), rect, true);
   }
 
   /**
@@ -355,16 +352,7 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
 
       frameProperties.addProperty("title", frame.getTitle());
       frameProperties.addProperty("tabtitle", frame.getTabTitle());
-      frameProperties.addProperty("html5", FunctionUtil.getDecimalForBoolean(frame.isHTML5));
-      frameProperties.addProperty(
-          "temporary", FunctionUtil.getDecimalForBoolean(frame.getTemporary()));
-      frameProperties.addProperty("visible", FunctionUtil.getDecimalForBoolean(frame.isVisible()));
-      frameProperties.addProperty("docked", FunctionUtil.getDecimalForBoolean(frame.isDocked()));
-      frameProperties.addProperty(
-          "floating",
-          FunctionUtil.getDecimalForBoolean(dc.isFloated())); // Always opposite of docked?
-      frameProperties.addProperty(
-          "autohide", FunctionUtil.getDecimalForBoolean(frame.isAutohide()));
+
       frameProperties.addProperty("height", frame.getHeight());
       frameProperties.addProperty("width", frame.getWidth());
       final var undockedBounds = dc.getUndockedBounds();
@@ -405,12 +393,12 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
 
   @Override
   public void closeRequest() {
-    MapTool.getFrame().getDockingManager().hideFrame(getKey());
+//    null.getDockingManager().hideFrame(getKey());
     setVisible(false);
     panel.flush();
 
     if (getTemporary()) {
-      MapTool.getFrame().getDockingManager().removeFrame(this.name, false);
+//      null.getDockingManager().removeFrame(this.name, false);
       frames.remove(this.name);
       dispose();
     }
@@ -420,7 +408,7 @@ public class HTMLFrame extends DockableFrame implements HTMLPanelContainer {
   public void actionPerformed(ActionEvent e) {
     if (e instanceof HTMLActionEvent.FormActionEvent) {
       HTMLActionEvent.FormActionEvent fae = (HTMLActionEvent.FormActionEvent) e;
-      MacroLinkFunction.runMacroLink(fae.getAction() + fae.getData());
+//      MacroLinkFunction.runMacroLink(fae.getAction() + fae.getData());
     }
     if (e instanceof HTMLActionEvent.RegisterMacroActionEvent) {
       HTMLActionEvent.RegisterMacroActionEvent rmae = (HTMLActionEvent.RegisterMacroActionEvent) e;

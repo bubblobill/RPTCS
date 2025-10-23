@@ -14,6 +14,7 @@
  */
 package net.rptools.maptool.model.library.addon;
 
+import com.google.common.net.MediaType;
 import com.google.protobuf.util.JsonFormat;
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +37,7 @@ import net.rptools.maptool.model.library.proto.AddOnLibraryEventsDto;
 import net.rptools.maptool.model.library.proto.AddOnStatSheetsDto;
 import net.rptools.maptool.model.library.proto.AddonSlashCommandsDto;
 import net.rptools.maptool.model.library.proto.MTScriptPropertiesDto;
-import org.apache.tika.mime.MediaType;
+
 import org.javatuples.Pair;
 
 /** Class for importing Drop In Libraries. */

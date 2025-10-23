@@ -27,10 +27,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.prefs.Preferences;
-import net.rptools.maptool.client.ui.zone.PlayerView;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Token;
-import net.rptools.maptool.model.Zone;
 import net.rptools.maptool.model.player.Player;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -191,10 +189,7 @@ public class AppUtil {
    */
   public static Path getInstallDirectory() {
     var path = Path.of(getAppInstallLocation());
-    if (MapTool.isDevelopment()) {
-      // remove build/classes/java
-      path = path.getParent().getParent().getParent();
-    } else { // First try to find MapTool* directory in path
+    // First try to find MapTool* directory in path
       while (path != null) {
         if (path.getFileName() == null) {
           // We have gone too far!
@@ -206,7 +201,7 @@ public class AppUtil {
         }
         path = path.getParent();
       }
-    }
+
     if (path == null) { // if not found then just return the parent of the app subdir
       return Path.of(getAppInstallLocation()).resolve("..").toAbsolutePath();
     } else {
@@ -270,142 +265,6 @@ public class AppUtil {
     }
 
     return defaultValue;
-  }
-
-  /**
-   * Returns a File object for the maptool tmp directory, or null if the users home directory could
-   * not be determined.
-   *
-   * @return the maptool tmp directory
-   */
-  public static File getTmpDir() {
-    return getAppHome("tmp");
-  }
-
-  /**
-   * Returns true if the player owns the token, otherwise false. If the player is GM this function
-   * always returns true. If strict token management is disabled then this function always returns
-   * true.
-   *
-   * @param token the {@link Token} to check the ownership of.
-   * @return {@code true} if the player owns the token, otherwise {@code false}.
-   */
-  public static boolean playerOwns(Token token) {
-    Player player = MapTool.getPlayer();
-    if (player.isGM()) {
-      return true;
-    }
-    if (!MapTool.getServerPolicy().useStrictTokenManagement()) {
-      return true;
-    }
-    return token.isOwner(player.getName());
-  }
-
-  /**
-   * Returns whether the token is owned by a non-gm player.
-   *
-   * @param token the token
-   * @return true if owned by all, or one of the owners is online and not a gm.
-   */
-  public static boolean ownedByOnePlayer(Token token) {
-    return token.isOwnedByAny(MapTool.getNonGMs());
-  }
-
-  /**
-   * Returns true if the token is visible in the zone. If the view is the GM view then this function
-   * always returns true.
-   *
-   * @param token the {@link Token} to check if the GM owns.
-   * @return {@code true} if the GM "owns" the {@link Token}, otherwise {@code false}.
-   */
-  public static boolean gmOwns(Token token) {
-    Player player = MapTool.getPlayer();
-
-    if (!MapTool.getServerPolicy().useStrictTokenManagement()) {
-      return true;
-    }
-    return (token.isOwner(player.getName()) && !token.isOwnedByAll()) || !token.hasOwners();
-  }
-
-  /**
-   * Returns true if the token is visible in the zone. If the view is the GM view then this function
-   * always returns true.
-   *
-   * @param zone to check for visibility
-   * @param token to check for visibility in zone
-   * @param view to use when checking visibility
-   * @return true if token is visible in zone given the view
-   */
-  public static boolean tokenIsVisible(Zone zone, Token token, PlayerView view) {
-    if (view.isGMView()) {
-      return true;
-    }
-    return zone.isTokenVisible(token);
-  }
-
-  /**
-   * Returns the disk spaced used in a given directory in a human readable format automatically
-   * adjusting to kb/mb/gb etc.
-   *
-   * @param directory the directory to retrieve the space used for.
-   * @return String of disk usage information.
-   * @author Jamz
-   * @since 1.4.0.1
-   */
-  public static String getDiskSpaceUsed(File directory) {
-    try {
-      final var visitor =
-          new SimpleFileVisitor<Path>() {
-            public long totalSize = 0;
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-              if (!attrs.isSymbolicLink()) {
-                totalSize += attrs.size();
-              }
-              return FileVisitResult.CONTINUE;
-            }
-          };
-      Files.walkFileTree(directory.toPath(), visitor);
-
-      return FileUtils.byteCountToDisplaySize(visitor.totalSize) + " ";
-    } catch (Exception e) {
-      log.error("Error while calculating disk usage", e);
-    }
-    return null;
-  }
-
-  /**
-   * Returns the free disk spaced for a given directory in a human readable format automatically
-   * adjusting to kb/mb/gb etc.
-   *
-   * @param directory the directory to retrieve the free space for.
-   * @return String of free disk space
-   * @author Jamz
-   * @since 1.4.0.
-   */
-  public static String getFreeDiskSpace(File directory) {
-    return FileUtils.byteCountToDisplaySize(directory.getFreeSpace()) + " ";
-  }
-
-  public static String readClientId() {
-    Path clientFile = Paths.get(getAppHome().getAbsolutePath(), CLIENT_ID_FILE);
-    String clientId = "unknown";
-    if (!clientFile.toFile().exists()) {
-      clientId = UUID.randomUUID().toString();
-      try {
-        Files.write(clientFile, clientId.getBytes());
-      } catch (IOException e) {
-        log.info("msg.error.unableToCreateClientIdFile", e);
-      }
-    } else {
-      try {
-        clientId = new String(Files.readAllBytes(clientFile));
-      } catch (IOException e) {
-        log.info("msg.error.unableToReadClientIdFile", e);
-      }
-    }
-    return clientId;
   }
 
   /**

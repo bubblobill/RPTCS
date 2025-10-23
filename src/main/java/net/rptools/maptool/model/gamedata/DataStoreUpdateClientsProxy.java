@@ -93,12 +93,6 @@ class DataStoreUpdateClientsProxy implements DataStore {
    * @param data the data value of the property
    */
   private void notifyClientsOfDataUpdate(String type, String namespace, DataValue data) {
-    try {
-      MapTool.serverCommand().updateData(type, namespace, toDto(data).get());
-    } catch (InterruptedException | ExecutionException e) {
-      log.error(I18N.getText("data.error.sendingUpdate"));
-      throw new CompletionException(e.getCause());
-    }
   }
 
   @Override
@@ -198,55 +192,25 @@ class DataStoreUpdateClientsProxy implements DataStore {
 
   @Override
   public CompletableFuture<Void> removeProperty(String type, String namespace, String name) {
-    MapTool.serverCommand().removeData(type, namespace, name);
     return dataStore.removeProperty(type, namespace, name);
   }
 
   @Override
   public CompletableFuture<Void> createNamespace(String propertyType, String namespace) {
-    return dataStore
-        .createNamespace(propertyType, namespace)
-        .thenRun(
-            () -> {
-              try {
-                MapTool.serverCommand().updateDataNamespace(toDto(propertyType, namespace).get());
-              } catch (InterruptedException | ExecutionException e) {
-                log.error(I18N.getText("data.error.sendingUpdate"));
-                throw new CompletionException(e.getCause());
-              }
-            });
+    return dataStore.createNamespace(propertyType, namespace);
   }
 
   @Override
   public CompletableFuture<Void> createNamespaceWithInitialData(
       String propertyType, String namespace, Collection<DataValue> initialData) {
-    return dataStore
-        .createNamespaceWithInitialData(propertyType, namespace, initialData)
-        .thenRun(
-            () -> {
-              try {
-                MapTool.serverCommand().updateDataNamespace(toDto(propertyType, namespace).get());
-              } catch (InterruptedException | ExecutionException e) {
-                log.error(I18N.getText("data.error.sendingUpdate"));
-                throw new CompletionException(e.getCause());
-              }
-            });
+    return dataStore.createNamespaceWithInitialData(propertyType, namespace, initialData);
   }
 
   @Override
   public CompletableFuture<Void> createNamespaceWithTypes(
       String propertyType, String namespace, Map<String, DataType> dataTypes) {
     return dataStore
-        .createNamespaceWithTypes(propertyType, namespace, dataTypes)
-        .thenRun(
-            () -> {
-              try {
-                MapTool.serverCommand().updateDataNamespace(toDto(propertyType, namespace).get());
-              } catch (InterruptedException | ExecutionException e) {
-                log.error(I18N.getText("data.error.sendingUpdate"));
-                throw new CompletionException(e.getCause());
-              }
-            });
+        .createNamespaceWithTypes(propertyType, namespace, dataTypes);
   }
 
   @Override
@@ -262,12 +226,10 @@ class DataStoreUpdateClientsProxy implements DataStore {
   @Override
   public void clear() {
     dataStore.clear();
-    MapTool.serverCommand().removeDataStore();
   }
 
   @Override
   public CompletableFuture<Void> clearNamespace(String propertyType, String namespace) {
-    MapTool.serverCommand().removeDataNamespace(propertyType, namespace);
     return dataStore.clearNamespace(propertyType, namespace);
   }
 

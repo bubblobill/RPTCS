@@ -82,7 +82,7 @@ public class ImageFileTreeModel implements TreeModel {
     try {
       return dir.getSubDirs().get(index);
     } catch (FileNotFoundException fnf) {
-      MapTool.showError(fnf.getLocalizedMessage(), fnf);
+      // MapTool.showError(fnf.getLocalizedMessage(), fnf);
       // Returning 'null' should be okay, since getChildCount will always return 0 for this
       // exception
       return null;
@@ -102,7 +102,7 @@ public class ImageFileTreeModel implements TreeModel {
     try {
       return dir.getSubDirs().size();
     } catch (FileNotFoundException fnf) {
-      MapTool.showError(fnf.getLocalizedMessage(), fnf);
+      // MapTool.showError(fnf.getLocalizedMessage(), fnf);
       return 0;
     }
   }
@@ -139,7 +139,7 @@ public class ImageFileTreeModel implements TreeModel {
     try {
       return dir.getSubDirs().indexOf(child);
     } catch (FileNotFoundException fnf) {
-      MapTool.showError(fnf.getLocalizedMessage(), fnf);
+      // MapTool.showError(fnf.getLocalizedMessage(), fnf);
       // Returning '0' should be okay, since getChildCount will always return 0 for this exception
       return 0;
     }

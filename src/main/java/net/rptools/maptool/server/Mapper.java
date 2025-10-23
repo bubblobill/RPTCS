@@ -14,7 +14,6 @@
  */
 package net.rptools.maptool.server;
 
-import com.google.common.primitives.Floats;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import java.awt.*;
@@ -22,13 +21,10 @@ import java.awt.geom.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
-import net.rptools.maptool.model.drawing.ExtendedGeneralPath_Double;
+
 import net.rptools.maptool.server.proto.ScriptTypeDto;
 import net.rptools.maptool.server.proto.StrokeDto;
 import net.rptools.maptool.server.proto.drawing.*;
-import org.apache.batik.ext.awt.geom.ExtendedGeneralPath;
-import org.apache.batik.ext.awt.geom.ExtendedPathIterator;
-import org.apache.batik.ext.awt.geom.Polygon2D;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -45,18 +41,6 @@ public class Mapper {
     for (; !it.isDone(); it.next()) {
       var segmentBuilder = SegmentDto.newBuilder();
       switch (it.currentSegment(coords)) {
-        case ExtendedPathIterator.SEG_ARCTO -> {
-          var arcTo =
-              ArcToSegment.newBuilder()
-                  .setRX(coords[0])
-                  .setRY(coords[1])
-                  .setAngle(coords[2])
-                  .setLargeArcFlag(coords[3] != 0)
-                  .setSweepFlag(coords[4] != 0)
-                  .setX(coords[5])
-                  .setY(coords[6]);
-          segmentBuilder.setArcTo(arcTo);
-        }
         case PathIterator.SEG_MOVETO -> {
           var point0Builder = DoublePointDto.newBuilder().setX(coords[0]).setY(coords[1]);
           var moveTo = MoveToSegment.newBuilder().setPoint0(point0Builder);
@@ -95,21 +79,10 @@ public class Mapper {
   public static Path2D map(PathShapeDto pathShapeDto) {
     final var segments = pathShapeDto.getSegmentsList();
     final var path =
-        new ExtendedGeneralPath_Double(pathShapeDto.getWindingValue(), segments.size());
+        new Path2D.Double(pathShapeDto.getWindingValue(), segments.size());
 
     for (final SegmentDto currentSegment : pathShapeDto.getSegmentsList()) {
       switch (currentSegment.getSegmentTypeCase()) {
-        case ARC_TO -> {
-          final var segment = currentSegment.getArcTo();
-          path.arcTo(
-              segment.getRX(),
-              segment.getRY(),
-              segment.getAngle(),
-              segment.getLargeArcFlag(),
-              segment.getSweepFlag(),
-              segment.getX(),
-              segment.getY());
-        }
         case MOVE_TO -> {
           final var segment = currentSegment.getMoveTo();
           var point = segment.getPoint0();
@@ -221,13 +194,7 @@ public class Mapper {
         var dto = shapeDto.getLine();
         return new Line2D.Double(dto.getX1(), dto.getY1(), dto.getX2(), dto.getY2());
       }
-      case POLYGON2D -> {
-        var dto = shapeDto.getPolygon2D();
-        return new Polygon2D(
-            Floats.toArray(dto.getXPointsList()),
-            Floats.toArray(dto.getYPointsList()),
-            dto.getNumPoints());
-      }
+
       case QUADCURVE -> {
         var dto = shapeDto.getQuadCurve();
         return new QuadCurve2D.Double(
@@ -294,8 +261,6 @@ public class Mapper {
               .setX2(cc.getX2())
               .setY2(cc.getY2());
       return shapeDto.setCubicCurve(dto).build();
-    } else if (shape instanceof ExtendedGeneralPath path) {
-      return shapeDto.setPath(map(path.getPathIterator(null))).build();
     } else if (shape instanceof Line2D ln) {
       var dto =
           LineDto.newBuilder()
@@ -304,13 +269,6 @@ public class Mapper {
               .setX2(ln.getX2())
               .setY2(ln.getY2());
       return shapeDto.setLine(dto).build();
-    } else if (shape instanceof Polygon2D poly) {
-      var dto =
-          PolygonShapeDto.newBuilder()
-              .addAllXPoints(Floats.asList(poly.xpoints))
-              .addAllYPoints(Floats.asList(poly.ypoints))
-              .setNumPoints(poly.npoints);
-      return shapeDto.setPolygon2D(dto).build();
     } else if (shape instanceof QuadCurve2D qc) {
       var dto =
           QuadCurveDto.newBuilder()

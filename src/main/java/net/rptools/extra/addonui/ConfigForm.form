@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="net.rpTools.aoTool.addonui.ConfigForm">
+  <grid id="27dc6" binding="contentPane" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+    <margin top="11" left="11" bottom="11" right="11"/>
+    <constraints>
+      <xy x="20" y="20" width="681" height="641"/>
+    </constraints>
+    <properties/>
+    <border type="none"/>
+    <children>
+      <scrollpane id="98f85" binding="scrollPane">
+        <constraints>
+          <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="7" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties/>
+        <border type="none"/>
+        <children>
+          <grid id="449a7" layout-manager="GridLayoutManager" row-count="14" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+            <margin top="0" left="0" bottom="0" right="0"/>
+            <constraints/>
+            <properties/>
+            <border type="none"/>
+            <children>
+              <component id="e328e" class="javax.swing.JLabel" binding="nameLabel">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="89710"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.name"/>
+                </properties>
+              </component>
+              <component id="51eeb" class="javax.swing.JLabel" binding="versionLabel">
+                <constraints>
+                  <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="d803b"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.version"/>
+                </properties>
+              </component>
+              <component id="75a5a" class="javax.swing.JLabel" binding="authorsLabel">
+                <constraints>
+                  <grid row="8" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="5ea68"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.authors"/>
+                </properties>
+              </component>
+              <component id="8ffe8" class="javax.swing.JLabel" binding="licenseLabel">
+                <constraints>
+                  <grid row="9" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="f772"/>
+                  <text resource-bundle="org/reverence/demo5th/language/I18n" key="label.license"/>
+                </properties>
+              </component>
+              <component id="4165a" class="javax.swing.JLabel" binding="licenseFileLabel">
+                <constraints>
+                  <grid row="10" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="c2014"/>
+                  <text resource-bundle="org/reverence/demo5th/language/I18n" key="label.license.file"/>
+                </properties>
+              </component>
+              <component id="72120" class="javax.swing.JLabel" binding="readmeLabel">
+                <constraints>
+                  <grid row="11" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="edd02"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.read.me"/>
+                </properties>
+              </component>
+              <component id="e809a" class="javax.swing.JLabel" binding="descriptionShortLabel">
+                <constraints>
+                  <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="bb6c7"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.description.short"/>
+                </properties>
+              </component>
+              <component id="14624" class="javax.swing.JLabel" binding="descriptionLabel">
+                <constraints>
+                  <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="1aac"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.description"/>
+                </properties>
+              </component>
+              <component id="c1d6" class="javax.swing.JLabel" binding="namespaceLabel">
+                <constraints>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="1" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="f4840"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.namespace"/>
+                </properties>
+              </component>
+              <component id="d87c3" class="javax.swing.JLabel" binding="externalUriLabel">
+                <constraints>
+                  <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.allow.uri.access"/>
+                </properties>
+              </component>
+              <component id="af259" class="javax.swing.JLabel" binding="gitLabel">
+                <constraints>
+                  <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="e7b41"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.git.url"/>
+                </properties>
+              </component>
+              <component id="b5e1b" class="javax.swing.JLabel" binding="websiteLabel">
+                <constraints>
+                  <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <labelFor value="9b781"/>
+                  <text resource-bundle="org/reverence/demo5th/language/i18n" key="label.web.site"/>
+                </properties>
+              </component>
+              <component id="89710" class="javax.swing.JTextField" binding="nameField">
+                <constraints>
+                  <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="18"/>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="f4840" class="javax.swing.JTextField" binding="namespaceField">
+                <constraints>
+                  <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="24"/>
+                </properties>
+              </component>
+              <component id="d803b" class="javax.swing.JTextField" binding="versionField">
+                <constraints>
+                  <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="12"/>
+                </properties>
+              </component>
+              <component id="bb6c7" class="javax.swing.JTextField" binding="shortDescriptionField">
+                <constraints>
+                  <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="24"/>
+                </properties>
+              </component>
+              <component id="ce09b" class="javax.swing.JCheckBox" binding="allowsExternalUriAccessField">
+                <constraints>
+                  <grid row="5" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="9b781" class="javax.swing.JFormattedTextField" binding="websiteField">
+                <constraints>
+                  <grid row="6" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="32"/>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="e7b41" class="javax.swing.JFormattedTextField" binding="gitField">
+                <constraints>
+                  <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="32"/>
+                </properties>
+              </component>
+              <component id="5ea68" class="javax.swing.JTextField" binding="authorsField">
+                <constraints>
+                  <grid row="8" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="18"/>
+                  <editable value="true"/>
+                </properties>
+              </component>
+              <component id="f772" class="javax.swing.JComboBox" binding="licenseField">
+                <constraints>
+                  <grid row="9" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false">
+                    <maximum-size width="150" height="-1"/>
+                  </grid>
+                </constraints>
+                <properties>
+                  <editable value="true"/>
+                </properties>
+              </component>
+              <component id="edd02" class="javax.swing.JTextField" binding="readmeField">
+                <constraints>
+                  <grid row="11" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="16"/>
+                </properties>
+              </component>
+              <component id="c2014" class="javax.swing.JTextField" binding="licenseFileField">
+                <constraints>
+                  <grid row="10" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="16"/>
+                </properties>
+              </component>
+              <component id="1aac" class="javax.swing.JTextArea" binding="descriptionField">
+                <constraints>
+                  <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <columns value="24"/>
+                  <margin top="3" left="11" bottom="3" right="8"/>
+                  <rows value="3"/>
+                  <wrapStyleWord value="true"/>
+                </properties>
+              </component>
+              <vspacer id="99863">
+                <constraints>
+                  <grid row="13" column="1" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
+                </constraints>
+              </vspacer>
+              <hspacer id="8bb14">
+                <constraints>
+                  <grid row="12" column="1" row-span="1" col-span="1" vsize-policy="1" hsize-policy="6" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                </constraints>
+              </hspacer>
+            </children>
+          </grid>
+        </children>
+      </scrollpane>
+    </children>
+  </grid>
+</form>

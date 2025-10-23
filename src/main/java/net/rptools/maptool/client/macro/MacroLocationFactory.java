@@ -79,18 +79,6 @@ public class MacroLocationFactory {
         MacroSource.campaign.getSourceName(),
         MacroSource.campaign.getSourceName());
   }
-
-  /**
-   * Creates a new {@link MacroLocation} object for a token.
-   *
-   * @param name the name of the macro.
-   * @param token the token associated with the macro.
-   * @return a new {@link MacroLocation} object for a token.
-   */
-  public MacroLocation createTokenLocation(@Nonnull String name, @Nonnull Token token) {
-    return new MacroLocation(name, MacroSource.token, token.getName(), "Token:" + token.getName());
-  }
-
   /**
    * Creates a new {@link MacroLocation} object for a library token.
    *
@@ -98,10 +86,7 @@ public class MacroLocationFactory {
    * @param libToken the library token associated with the macro.
    * @return a new {@link MacroLocation} object for a library token.
    */
-  public MacroLocation createLibTokenLocation(@Nonnull String name, @Nonnull Token libToken) {
-    return new MacroLocation(
-        name, MacroSource.library, libToken.getName().substring(4), libToken.getName());
-  }
+
 
   /**
    * Creates a new {@link MacroLocation} object for a GM Panel.
@@ -204,15 +189,5 @@ public class MacroLocationFactory {
         MacroSource.chat.getSourceName());
   }
 
-  /**
-   * Creates a new {@link MacroLocation} object for a tooltip.
-   *
-   * @param token the token associated with the tooltip.
-   * @return a new {@link MacroLocation} object for a tooltip.
-   */
-  public MacroLocation createToolTipLocation(@Nullable Token token) {
-    var location = token != null ? token.getName() : "";
-    return new MacroLocation(
-        MacroSource.tooltip.getSourceName(), MacroSource.tooltip, location, location);
-  }
+
 }

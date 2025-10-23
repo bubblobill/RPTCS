@@ -17,7 +17,7 @@ in your pull request being rejected.
    that are embedded inside the MapTool JAR, such as **unknown.png** -- the question mark image.
 5. Report to the user all exceptions that are true errors. `InterruptedException` while waiting for
    a timer can be ignored, for example. But all other errors should be handled by calling
-   `MapTool.showError(propertyKey)` or similar and passing both a `propertyKey` and the `Throwable`
+   `// MapTool.showError(propertyKey)` or similar and passing both a `propertyKey` and the `Throwable`
    object representing the exception. Note that the various "show" methods already provide logging
    to the `.maptool/log.txt` file.
 6. Use the language-defined static variables instead of hard-coded strings when possible. Examples

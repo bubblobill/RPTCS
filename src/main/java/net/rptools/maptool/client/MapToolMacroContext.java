@@ -31,7 +31,7 @@ public class MapToolMacroContext {
   private int macroButtonIndex;
 
   /** Use tooltips for unformatted roles */
-  private boolean useToolTipsForUnformatedRolls = MapTool.useToolTipsForUnformatedRolls();
+  private boolean useToolTipsForUnformatedRolls = true;
 
   /**
    * Creates a new Macro Context.

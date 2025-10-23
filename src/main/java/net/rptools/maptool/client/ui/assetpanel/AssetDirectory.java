@@ -136,17 +136,16 @@ public class AssetDirectory extends Directory {
       // Load it up
       Image thumbnail = null;
       try {
-        if (imageFile.getName().toLowerCase().endsWith(Token.FILE_EXTENSION)) {
-          thumbnail = PersistenceUtil.getTokenThumbnail(imageFile);
-        } else if (imageFile.getName().toLowerCase().endsWith(".pdf")) {
+        if (imageFile.getName().toLowerCase().endsWith(".pdf")) {
           thumbnail = PDF_IMAGE;
         } else if (imageFile.getName().toLowerCase().endsWith(".por")) {
           thumbnail = HERO_LAB_IMAGE;
-        } else {
-          thumbnail =
-              MapTool.getThumbnailManager()
-                  .getThumbnail(imageFile, AppPreferences.renderQuality.get());
         }
+//        else {
+//          thumbnail =
+//              MapTool.getThumbnailManager()
+//                  .getThumbnail(imageFile, AppPreferences.renderQuality.get());
+//        }
       } catch (Throwable t) {
         log.error("Error while getting image thumbnail", t);
         thumbnail = INVALID_IMAGE;

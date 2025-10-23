@@ -26,10 +26,6 @@ import java.util.Map;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import net.rptools.maptool.client.AppPreferences;
-import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.events.OverlayVisibilityChanged;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
-import net.rptools.maptool.client.ui.zone.renderer.ZoneRenderer;
 import net.rptools.maptool.events.MapToolEventBus;
 import netscape.javascript.JSObject;
 import org.apache.logging.log4j.LogManager;
@@ -137,9 +133,9 @@ public class HTMLOverlayManager extends HTMLWebViewManager implements HTMLPanelC
     super.handlePage();
     setPageBackgroundColor(COLOR_INVISIBLE); // transparent WebView
 
-    getWebView()
-        .cursorProperty()
-        .addListener((obs, oldCursor, newCursor) -> updateOverlayCursor(newCursor));
+//    getWebView()
+//        .cursorProperty()
+//        .addListener((obs, oldCursor, newCursor) -> updateOverlayCursor(newCursor));
   }
 
   @Override
@@ -151,32 +147,13 @@ public class HTMLOverlayManager extends HTMLWebViewManager implements HTMLPanelC
     super.updateContents(htmlContent, scrollReset);
   }
 
-  /**
-   * Updates the overlay cursor to match the WebView cursor, if needs be.
-   *
-   * @param newCursor the cursor that WebView tries to impose
-   */
-  private void updateOverlayCursor(javafx.scene.Cursor newCursor) {
-    if (newCursor != null && "DEFAULT".equals(newCursor.toString())) {
-      // Only changes to the default cursor if all WebViews have the default cursor
-      if (MapTool.getFrame().getOverlayPanel().areWebViewCursorsDefault()) {
-        ZoneRenderer zr = MapTool.getFrame().getCurrentZoneRenderer();
-        if (zr != null) {
-          Cursor cursor = zr.getCursor();
-          MapTool.getFrame().getOverlayPanel().setOverlayCursor(cursor);
-        }
-      }
-    } else if (newCursor != null) {
-      MapTool.getFrame().getOverlayPanel().setOverlayCursor(newCursor);
-    }
-  }
 
   /**
    * @return the rule for an invisible body.
    */
   @Override
   String getCSSRule() {
-    return String.format(CSS_BODY, AppPreferences.fontSize.get())
+    return String.format(CSS_BODY, 13)
         + CSS_SPAN
         + CSS_DIV
         + CSS_POINTERMAP;
@@ -232,7 +209,7 @@ public class HTMLOverlayManager extends HTMLWebViewManager implements HTMLPanelC
   @Override
   public void setVisible(boolean visible) {
     getWebView().setVisible(visible);
-    new MapToolEventBus().getMainEventBus().post(new OverlayVisibilityChanged(this, visible));
+//    new MapToolEventBus().getMainEventBus().post(new OverlayVisibilityChanged(this, visible));
   }
 
   @Override
@@ -283,10 +260,7 @@ public class HTMLOverlayManager extends HTMLWebViewManager implements HTMLPanelC
    */
   @Override
   public void actionPerformed(ActionEvent e) {
-    if (e instanceof HTMLActionEvent.FormActionEvent) {
-      HTMLActionEvent.FormActionEvent fae = (HTMLActionEvent.FormActionEvent) e;
-      MacroLinkFunction.runMacroLink(fae.getAction() + fae.getData());
-    }
+
     if (e instanceof HTMLActionEvent.RegisterMacroActionEvent) {
       HTMLActionEvent.RegisterMacroActionEvent rmae = (HTMLActionEvent.RegisterMacroActionEvent) e;
       macroCallbacks.put(rmae.getType(), rmae.getMacro());

@@ -14,7 +14,6 @@
  */
 package net.rptools.lib.image;
 
-import com.twelvemonkeys.image.ResampleOp;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
@@ -25,7 +24,6 @@ import java.io.*;
 import java.util.Arrays;
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import net.rptools.lib.MathUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -390,48 +388,6 @@ public class ImageUtil {
     return bytesToImage(dataStream.toByteArray(), image);
   }
 
-  public static BufferedImage flipIsometric(
-      BufferedImage image, boolean toRhombus, RenderQuality renderQuality) {
-    BufferedImage workImage;
-    boolean isSquished =
-        MathUtil.inTolerance(image.getHeight(), image.getWidth() / 2d, image.getHeight() * 0.05);
-    if (image.getWidth() != image.getHeight()) {
-      int maxDim = Math.max(image.getWidth(), image.getHeight());
-      int w, h = 1;
-      if (toRhombus) {
-        // make it square and centred
-        w = h = maxDim;
-      } else {
-        if (!isSquished) {
-          w = maxDim;
-          h = (int) Math.ceil(maxDim / 2d);
-        } else {
-          w = image.getWidth();
-          w = (int) Math.ceil(image.getWidth() / 2d);
-        }
-      }
-      workImage = new BufferedImage(w, h, image.getTransparency());
-      Graphics2D wig = workImage.createGraphics();
-      wig.drawImage(
-          image,
-          (workImage.getWidth() - image.getWidth()) / 2,
-          (workImage.getHeight() - image.getHeight()) / 2,
-          image.getWidth(),
-          image.getHeight(),
-          null);
-      wig.dispose();
-      image = workImage;
-    }
-    if (toRhombus) {
-      image = rotateImage(image, 45);
-      image = scaleBufferedImage(image, image.getWidth(), image.getHeight() / 2, renderQuality);
-    } else {
-      image = scaleBufferedImage(image, image.getWidth(), image.getWidth(), renderQuality);
-      image = rotateImage(image, -45);
-    }
-    return image;
-  }
-
   /**
    * Scales a BufferedImage to a desired width and height and returns the result.
    *
@@ -443,8 +399,11 @@ public class ImageUtil {
    */
   public static BufferedImage scaleBufferedImage(
       BufferedImage image, int width, int height, RenderQuality renderQuality) {
-    ResampleOp resampleOp = new ResampleOp(width, height, renderQuality.getResampleOpFilter());
-    return resampleOp.filter(image, null);
+        BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR_PRE);
+        Graphics2D g2d = bi.createGraphics();
+        g2d.drawImage(image,0,0,width,height,null);
+        g2d.dispose();
+      return bi;
   }
 
   public static ImageIcon scaleImageIcon(ImageIcon icon, int w, int h) {

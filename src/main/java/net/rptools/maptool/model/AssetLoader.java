@@ -335,7 +335,7 @@ public class AssetLoader {
       // Last resort, ask the MT server
       // We can drop off the end of this runnable because it'll background load the
       // image from the server
-      MapTool.serverCommand().getAsset(id);
+//      MapTool.serverCommand().getAsset(id);
     }
   }
 }

@@ -20,13 +20,13 @@ import javax.swing.JTextArea;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.Element;
 import javax.swing.text.StyleConstants;
+import javax.swing.text.html.FormView;
 import javax.swing.text.html.HTML;
-import net.rptools.maptool.client.swing.SubmitFormView;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /** Extends SubmitFormView to potentially provide a JScrollPane for TEXTAREA. */
-public class HTMLPaneFormView extends SubmitFormView {
+public class HTMLPaneFormView extends FormView {
 
   private static final Logger log = LogManager.getLogger(HTMLPaneFormView.class);
 
@@ -37,12 +37,7 @@ public class HTMLPaneFormView extends SubmitFormView {
    * @param pane The HTMLPane this element resides on.
    */
   public HTMLPaneFormView(Element elem, HTMLPane pane) {
-    super(elem, pane);
-  }
-
-  @Override
-  public Logger getLog() {
-    return log;
+    super(elem);
   }
 
   @Override

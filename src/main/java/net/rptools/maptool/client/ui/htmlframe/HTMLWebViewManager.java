@@ -54,10 +54,7 @@ import javax.swing.SwingUtilities;
 import net.rptools.lib.FileUtil;
 import net.rptools.maptool.client.AppPreferences;
 import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
-import net.rptools.maptool.client.functions.json.JSONMacroFunctions;
 import net.rptools.maptool.language.I18N;
-import net.rptools.maptool.model.TextMessage;
 import net.rptools.maptool.model.library.LibraryManager;
 import net.rptools.maptool.util.PromiseUtil;
 import netscape.javascript.JSObject;
@@ -165,7 +162,7 @@ public class HTMLWebViewManager {
      * @param text the message to display
      */
     public void log(String text) {
-      MapTool.addMessage(TextMessage.me(null, text));
+      // MapTool.addMessage((TextMessage.me(null, text));
     }
 
     /**
@@ -424,12 +421,12 @@ public class HTMLWebViewManager {
   private static void showError(WebErrorEvent event) {
     // Hide error "User data directory is already in use", directory not used anyway
     if (event.getEventType() != WebErrorEvent.USER_DATA_DIRECTORY_ALREADY_IN_USE) {
-      MapTool.addMessage(TextMessage.me(null, event.getMessage()));
+      // MapTool.addMessage((TextMessage.me(null, event.getMessage()));
     }
   }
 
   String getCSSRule() {
-    return String.format(CSS_BODY, AppPreferences.fontSize.get()) + CSS_SPAN + CSS_DIV;
+    return String.format(CSS_BODY, 13) + CSS_SPAN + CSS_DIV;
   }
 
   /**
@@ -587,8 +584,6 @@ public class HTMLWebViewManager {
       String href2 = href.trim().toLowerCase();
       if (!webViewHandledHref(href2)) {
         if (href2.startsWith("macro")) {
-          // ran as macroLink;
-          SwingUtilities.invokeLater(() -> MacroLinkFunction.runMacroLink(href));
         } else if (href2.startsWith("#")) {
           // Java bug JDK-8199014 workaround
           webEngine.executeScript(String.format(SCRIPT_ANCHOR, href.substring(1)));
@@ -732,21 +727,6 @@ public class HTMLWebViewManager {
       addToObject(jObj, name, value);
     }
 
-    // Find the link data
-    Matcher m = MacroLinkFunction.LINK_DATA_PATTERN.matcher(action);
-    JsonElement linkData = null;
-    if (m.matches()) {
-      // Separate the action from the data
-      action = m.group(1);
-      linkData = MacroLinkFunction.getInstance().getLinkDataAsJson(m.group(2));
-    }
-
-    // Combines and encodes the form data with the link data
-    String data = getEncodedCombinedData(jObj, linkData);
-
-    // Form submit should be ran on EDT. Fixes #2056.
-    final String finalAction = action;
-    SwingUtilities.invokeLater(() -> doSubmit("json", finalAction, data));
   }
 
   /**
@@ -793,8 +773,6 @@ public class HTMLWebViewManager {
         BigDecimal number = new BigDecimal(value);
         jObj.addProperty(name, number);
       } catch (NumberFormatException nfe) {
-        JsonElement json = JSONMacroFunctions.getInstance().asJsonElement(value);
-        jObj.add(name, json);
       }
     }
   }

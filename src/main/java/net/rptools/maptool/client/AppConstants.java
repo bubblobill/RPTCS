@@ -42,19 +42,8 @@ public class AppConstants {
   public static final int NOTE_PORTRAIT_SIZE = 200;
   public static final int ASSET_SEARCH_LIMIT = 1000;
 
-  public static final String[] IMAGE_FILES = ImageIO.getReaderFormatNames();
-  public static final FilenameFilter IMAGE_FILE_FILTER =
-      (dir, name) -> {
-        name = name.toLowerCase();
-        for (String suffix : IMAGE_FILES) {
-          if (name.endsWith("." + suffix)) {
-            return true;
-          }
-        }
-        return
-        // name.endsWith(".pdf") || name.endsWith(".por") ||
-        name.endsWith(Token.FILE_EXTENSION); // RPTools Token format
-      };
+//  public static final String[] IMAGE_FILES = ImageIO.getReaderFormatNames();
+
 
   public static final String CAMPAIGN_FILE_EXTENSION = ".cmpgn";
   public static final String CAMPAIGN_FILE_EXTENSION_ND = "cmpgn";

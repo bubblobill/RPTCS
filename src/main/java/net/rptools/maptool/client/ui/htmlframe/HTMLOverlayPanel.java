@@ -31,12 +31,6 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebView;
 import javax.swing.*;
 import net.rptools.maptool.client.AppConstants;
-import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.events.OverlayVisibilityChanged;
-import net.rptools.maptool.client.swing.SwingUtil;
-import net.rptools.maptool.client.tool.DefaultTool;
-import net.rptools.maptool.client.tool.Tool;
-import net.rptools.maptool.client.ui.AppMenuBar;
 import net.rptools.maptool.events.MapToolEventBus;
 import net.rptools.maptool.model.Token;
 import org.apache.logging.log4j.LogManager;
@@ -68,7 +62,6 @@ public class HTMLOverlayPanel extends JFXPanel {
   /** Creates a new HTMLJFXPanel. */
   public HTMLOverlayPanel() {
     super();
-    addMouseListeners(); // mouse listeners to transmit to the ZR
     setBackground(new Color(0, 0, 0, 0)); // transparent overlay
 
     Platform.runLater(this::setupScene);
@@ -160,9 +153,9 @@ public class HTMLOverlayPanel extends JFXPanel {
    *
    * @param cursor the cursor to set
    */
-  public void setOverlayCursor(java.awt.Cursor cursor) {
-    front.setCursor(SwingUtil.swingCursorToFX(cursor));
-  }
+//  public void setOverlayCursor(java.awt.Cursor cursor) {
+//    front.setCursor(SwingUtil.swingCursorToFX(cursor));
+//  }
 
   /**
    * Runs the javascript on an overlay.
@@ -214,7 +207,6 @@ public class HTMLOverlayPanel extends JFXPanel {
       if (!overlay.getName().startsWith(AppConstants.INTERNAL_FRAME_PREFIX)) {
         root.getChildren().remove(overlay.getWebView());
         overlays.remove(overlay);
-        AppMenuBar.removeFromOverlayMenu(overlay.getName());
         overlay.flush();
       }
       if (overlays.isEmpty()) {
@@ -231,7 +223,6 @@ public class HTMLOverlayPanel extends JFXPanel {
             if (!overlay.getName().startsWith(AppConstants.INTERNAL_FRAME_PREFIX)) {
               root.getChildren().remove(overlay.getWebView());
               overlays.remove(overlay);
-              AppMenuBar.removeFromOverlayMenu(overlay.getName());
               overlay.flush();
             }
           }
@@ -269,7 +260,6 @@ public class HTMLOverlayPanel extends JFXPanel {
                 overlays.add(overlayManager);
               }
               overlayManager.setLocked(locked);
-              AppMenuBar.updateOverlayMenuLocked(overlayManager);
             }
 
           } else {
@@ -278,7 +268,6 @@ public class HTMLOverlayPanel extends JFXPanel {
             overlays.add(overlayManager);
             root.getChildren().add(overlayManager.getWebView());
             if (!HTMLFrameFactory.isInternalOnly(overlayManager.getName())) {
-              AppMenuBar.addToOverlayMenu(overlayManager);
             }
           }
           sortOverlays();
@@ -289,36 +278,11 @@ public class HTMLOverlayPanel extends JFXPanel {
         });
   }
 
-  @Subscribe
-  private void onOverlayVisibilityChanged(OverlayVisibilityChanged event) {
-    Platform.runLater(() -> setVisible(overlays.stream().anyMatch(HTMLOverlayManager::isVisible)));
-  }
 
   /** Display the overlays according to their zOrder. */
   private void sortOverlays() {
     overlays.forEach(overlay -> overlay.getWebView().toFront());
     front.toFront();
-  }
-
-  /**
-   * Determines if the mouse event should be forwarded, and if so dispatch it to the ZoneRenderer.
-   *
-   * @param e the mouse event
-   */
-  private void mayPassClick(MouseEvent e) {
-    Platform.runLater(
-        () -> {
-          // get the result based on the most restrictive CSS of all overlays
-          mousePassResult result = getMousePassResult(e);
-          if (result != mousePassResult.BLOCK) {
-            SwingUtilities.invokeLater(
-                () -> {
-                  if (result == mousePassResult.PASS || !isOpaque(e.getX(), e.getY())) {
-                    passMouseEvent(e);
-                  }
-                });
-          }
-        });
   }
 
   /**
@@ -361,82 +325,6 @@ public class HTMLOverlayPanel extends JFXPanel {
     return c.getAlpha() != 0;
   }
 
-  /**
-   * Add the mouse listeners to forward the mouse events to the current ZoneRenderer. Clicks and
-   * mouse press get validated first to see if they need forwarding.
-   */
-  private void addMouseListeners() {
-    addMouseWheelListener(this::passMouseEvent);
-    addMouseMotionListener(
-        new MouseMotionAdapter() {
-          @Override
-          public void mouseMoved(MouseEvent e) {
-            passMouseEvent(e);
-          }
-
-          @Override
-          public void mouseDragged(MouseEvent e) {
-            passMouseEvent(e);
-          }
-        });
-    addMouseListener(
-        new MouseAdapter() {
-          @Override
-          public void mouseClicked(MouseEvent e) {
-            mayPassClick(e);
-          }
-
-          @Override
-          public void mousePressed(MouseEvent e) {
-            maySetMapDragStart(e); // may set map dragstart x and y, even if on overlay
-            mayPassClick(e);
-            e.consume(); // workaround for java bug JDK-8200224
-          }
-
-          @Override
-          public void mouseReleased(MouseEvent e) {
-            passMouseEvent(e);
-          }
-
-          @Override
-          public void mouseEntered(MouseEvent e) {
-            passMouseEvent(e);
-          }
-
-          @Override
-          public void mouseExited(MouseEvent e) {
-            passMouseEvent(e);
-          }
-        });
-  }
-
-  /**
-   * Passes a mouse event to the ZoneRenderer.
-   *
-   * @param e the mouse event to forward
-   */
-  void passMouseEvent(MouseEvent e) {
-    Component c = MapTool.getFrame().getCurrentZoneRenderer();
-    if (c != null) {
-      c.dispatchEvent(SwingUtilities.convertMouseEvent(e.getComponent(), e, c));
-    }
-  }
-
-  /**
-   * Sets up the initial drag start. If the mouse press is a right click and the tool could be
-   * dragging the map, sets up the initial drag start. This is required or the map will "jump" if
-   * performing a right click on the overlay followed by a drag.
-   *
-   * @param e the mouse press event
-   */
-  private void maySetMapDragStart(MouseEvent e) {
-    if (SwingUtilities.isRightMouseButton(e)) {
-      Tool tool = MapTool.getFrame().getToolbox().getSelectedTool();
-      if (tool instanceof DefaultTool) {
-        ((DefaultTool) tool).setDragStart(e.getX(), e.getY());
-      }
-    }
-  }
 
   /**
    * Run all callback macros for "onTokenChanged".

@@ -18,7 +18,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Map;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
 import net.rptools.maptool.model.Token;
 
 /** Interface for the container of an HTML panel. */
@@ -99,8 +98,7 @@ public interface HTMLPanelContainer extends ActionListener {
    */
   static void selectedChanged(Map<String, String> macroCallbacks) {
     if (macroCallbacks.get("onChangeSelection") != null) {
-      EventQueue.invokeLater(
-          () -> MacroLinkFunction.runMacroLink(macroCallbacks.get("onChangeSelection")));
+
     }
   }
 
@@ -111,8 +109,6 @@ public interface HTMLPanelContainer extends ActionListener {
    */
   static void impersonatedChanged(Map<String, String> macroCallbacks) {
     if (macroCallbacks.get("onChangeImpersonated") != null) {
-      EventQueue.invokeLater(
-          () -> MacroLinkFunction.runMacroLink(macroCallbacks.get("onChangeImpersonated")));
     }
   }
 
@@ -124,10 +120,7 @@ public interface HTMLPanelContainer extends ActionListener {
    */
   static void tokenChanged(final Token token, Map<String, String> macroCallbacks) {
     if (macroCallbacks.get("onChangeToken") != null) {
-      EventQueue.invokeLater(
-          () ->
-              MacroLinkFunction.runMacroLink(
-                  macroCallbacks.get("onChangeToken") + token.getId().toString()));
+
     }
   }
 }

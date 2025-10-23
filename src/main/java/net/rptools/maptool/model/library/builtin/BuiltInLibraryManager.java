@@ -138,7 +138,7 @@ public class BuiltInLibraryManager {
     try {
       uri = classLoader.getResource(ClassPathAddOnLibrary.BUILTIN_LIB_CLASSPATH_DIR).toURI();
     } catch (URISyntaxException e) {
-      MapTool.showError("msg.error.library.builtin.path", e);
+      // MapTool.showError("msg.error.library.builtin.path", e);
       return;
     }
 
@@ -160,11 +160,11 @@ public class BuiltInLibraryManager {
                   clib.initialize();
 
                 } catch (Exception e) {
-                  MapTool.showError("msg.error.library.builtin.load", e);
+                  // MapTool.showError("msg.error.library.builtin.load", e);
                 }
               });
     } catch (IOException e) {
-      MapTool.showError("msg.error.library.builtin.load", e);
+      // MapTool.showError("msg.error.library.builtin.load", e);
     }
   }
 }

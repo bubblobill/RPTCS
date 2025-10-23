@@ -17,14 +17,9 @@ package net.rptools.maptool.client.ui.htmlframe;
 import com.google.common.eventbus.Subscribe;
 import net.rptools.maptool.client.AppConstants;
 import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.events.ZoneActivated;
-import net.rptools.maptool.client.events.ZoneDeactivated;
-import net.rptools.maptool.client.ui.zone.SelectionModel;
 import net.rptools.maptool.events.MapToolEventBus;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Token;
-import net.rptools.maptool.model.Zone;
-import net.rptools.maptool.model.zones.TokensChanged;
 import net.rptools.parser.ParserException;
 
 public class HTMLFrameFactory {
@@ -183,25 +178,19 @@ public class HTMLFrameFactory {
           isHTML5,
           frameValue,
           htmlContent);
-    } else if (frameType == FrameType.OVERLAY) {
-      MapTool.getFrame()
-          .getOverlayPanel()
-          .showOverlay(name, zOrder, locked, htmlContent, frameValue);
-    }
+    } else if (frameType == FrameType.OVERLAY) {}
   }
 
   /** The list of selected tokens changed. */
   public static void selectedListChanged() {
     HTMLFrame.doSelectedChanged();
     HTMLDialog.doSelectedChanged();
-    MapTool.getFrame().getOverlayPanel().doSelectedChanged();
   }
 
   /** A new token has been impersonated or cleared. */
   public static void impersonateToken() {
     HTMLFrame.doImpersonatedChanged();
     HTMLDialog.doImpersonatedChanged();
-    MapTool.getFrame().getOverlayPanel().doImpersonatedChanged();
   }
 
   /**
@@ -212,47 +201,12 @@ public class HTMLFrameFactory {
   public static void tokenChanged(Token token) {
     HTMLFrame.doTokenChanged(token);
     HTMLDialog.doTokenChanged(token);
-    MapTool.getFrame().getOverlayPanel().doTokenChanged(token);
   }
 
   public static class Listener {
-    private Zone currentZone;
 
-    public Listener() {
-      new MapToolEventBus().getMainEventBus().register(this);
-      currentZone = MapTool.getFrame().getCurrentZoneRenderer().getZone();
     }
 
-    @Subscribe
-    private void onSelectionChanged(SelectionModel.SelectionChanged event) {
-      if (event.zone() != currentZone) {
-        return;
-      }
-
-      selectedListChanged();
-    }
-
-    @Subscribe
-    void onZoneDeactivated(ZoneDeactivated event) {
-      currentZone = null;
-    }
-
-    @Subscribe
-    void onZoneActivated(ZoneActivated event) {
-      currentZone = event.zone();
-    }
-
-    @Subscribe
-    private void onTokensChanged(TokensChanged event) {
-      if (event.zone() != currentZone) {
-        return;
-      }
-
-      for (Token token : event.tokens()) {
-        tokenChanged(token);
-      }
-    }
-  }
 
   /**
    * Return the visibility of the container.

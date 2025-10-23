@@ -31,7 +31,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import net.rptools.maptool.client.MapToolRegistry;
 
 public class NetUtil {
   private static final NetUtil instance = new NetUtil();
@@ -61,27 +60,7 @@ public class NetUtil {
 
   @Nonnull private CompletableFuture<InetAddress> externalAddressFuture;
 
-  public NetUtil() {
-    externalAddressFuture = MapToolRegistry.getInstance().getAddressAsync();
-  }
 
-  /**
-   * Get a cached result of requesting the external address from the registry.
-   *
-   * @return A future that resolves to the external address or null if indeterminate.
-   */
-  @Nonnull
-  public CompletableFuture<InetAddress> getExternalAddress() {
-    // Reuse the future if the last one didn't fail
-    switch (externalAddressFuture.state()) {
-      case Future.State.CANCELLED, Future.State.FAILED -> {
-        externalAddressFuture = MapToolRegistry.getInstance().getAddressAsync();
-      }
-      default -> {}
-    }
-
-    return externalAddressFuture;
-  }
 
   public record LocalAddresses(
       @Nonnull List<Inet4Address> ipv4, @Nonnull List<Inet6Address> ipv6) {}

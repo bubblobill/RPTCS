@@ -34,8 +34,9 @@ import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
+
+import com.google.common.net.MediaType;
 import net.rptools.lib.MD5Key;
-import net.rptools.lib.StringUtil;
 import net.rptools.lib.image.ImageUtil;
 import net.rptools.lib.transferable.FileTransferableHandler;
 import net.rptools.lib.transferable.GroupTokenTransferData;
@@ -52,7 +53,6 @@ import net.rptools.maptool.model.library.addon.AddOnLibraryImporter;
 import net.rptools.maptool.util.PersistenceUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.tika.mime.MediaType;
 
 /**
  * A helper class for converting Transferable objects into their respective data types. This class
@@ -147,16 +147,16 @@ public class TransferableHelper extends TransferHandler {
     try {
       // Try to use a URI, since the '%20' encoding will be automatically converted for us.
       uri = url.toURI();
-      if (!StringUtil.isEmpty(uri.getQuery())) {
+      if (!uri.getQuery().isEmpty()) {
         result = findNameInThisPiece(uri.getQuery());
-      } else if (!StringUtil.isEmpty(uri.getPath())) {
+      } else if (!uri.getPath().isEmpty()) {
         result = findNameInThisPiece(uri.getPath());
       }
     } catch (URISyntaxException e) {
       // But if we can't make a URI work, fallback to just the URL.
-      if (!StringUtil.isEmpty(url.getQuery())) {
+      if (!url.getQuery().isEmpty()) {
         result = findNameInThisPiece(url.getQuery());
-      } else if (!StringUtil.isEmpty(url.getPath())) {
+      } else if (!url.getPath().isEmpty()) {
         result = findNameInThisPiece(url.getPath());
       }
     }
@@ -256,12 +256,12 @@ public class TransferableHelper extends TransferHandler {
       // DIRECT/BROWSER
       // Try 'image/x-java-image; java.awt.Image' to see if Java has recognized the image as such
       if (o == null && transferable.isDataFlavorSupported(X_JAVA_IMAGE)) {
-        log.info("Selected: {}", X_JAVA_IMAGE);
-        BufferedImage image =
-            (BufferedImage)
-                new ImageTransferableHandler(AppPreferences.renderQuality::get)
-                    .getTransferObject(transferable);
-        o = Asset.createImageAsset("unnamed", ImageUtil.imageToBytes(image));
+//        log.info("Selected: {}", X_JAVA_IMAGE);
+//        BufferedImage image =
+//            (BufferedImage)
+//                new ImageTransferableHandler(AppPreferences.renderQuality::get)
+//                    .getTransferObject(transferable);
+//        o = Asset.createImageAsset("unnamed", ImageUtil.imageToBytes(image));
       }
 
       // DIRECT/BROWSER
@@ -287,7 +287,7 @@ public class TransferableHelper extends TransferHandler {
         else assets.add(o);
       }
     } catch (Exception e) {
-      MapTool.showError("TransferableHelper.error.unrecognizedAsset", e); // $NON-NLS-1$
+      // MapTool.showError("TransferableHelper.error.unrecognizedAsset", e); // $NON-NLS-1$
       return null;
     }
     if (assets == null || assets.isEmpty()) {
@@ -298,9 +298,6 @@ public class TransferableHelper extends TransferHandler {
         if (!asset.getMD5Key().equals(AssetManager.BAD_ASSET_LOCATION_KEY)) {
           if (!AssetManager.hasAsset(asset)) {
             AssetManager.putAsset(asset);
-          }
-          if (!MapTool.getCampaign().containsAsset(asset)) {
-            MapTool.serverCommand().putAsset(asset);
           }
         }
       }
@@ -336,16 +333,16 @@ public class TransferableHelper extends TransferHandler {
       log.debug("Reading URL:  {}", url); // $NON-NLS-1$
       image = ImageIO.read(url);
     } catch (Exception e) {
-      MapTool.showError("TransferableHelper.error.urlFlavor", e); // $NON-NLS-1$
+      // MapTool.showError("TransferableHelper.error.urlFlavor", e); // $NON-NLS-1$
     }
     if (image == null) {
-      log.debug(
-          "{} didn't work; trying ImageTransferableHandler().getTransferObject()",
-          type); // $NON-NLS-1$
-      image =
-          (BufferedImage)
-              new ImageTransferableHandler(AppPreferences.renderQuality::get)
-                  .getTransferObject(transferable);
+//      log.debug(
+//          "{} didn't work; trying ImageTransferableHandler().getTransferObject()",
+//          type); // $NON-NLS-1$
+//      image =
+//          (BufferedImage)
+//              new ImageTransferableHandler(AppPreferences.renderQuality::get)
+//                  .getTransferObject(transferable);
     }
     if (image != null) {
       String name = findName(url);
@@ -363,13 +360,7 @@ public class TransferableHelper extends TransferHandler {
       // A JFileChooser (at least under Linux) sends a couple empty filenames that need to be
       // ignored.
       if (!url.getPath().equals("")) { // $NON-NLS-1$
-        if (Token.isTokenFile(url.getPath())) {
-          // Loading the token causes the assets to be added to the AssetManager
-          // so it doesn't need to be added to our List here. In fact, getAsset()
-          // will strip out anything in the List that isn't an Asset anyway...
-          Token token = PersistenceUtil.loadToken(url);
-          assets.add(token);
-        } else if (AddOnLibraryImporter.isAddOnLibrary(url.getPath())) {
+        if (AddOnLibraryImporter.isAddOnLibrary(url.getPath())) {
           Asset temp = AssetManager.createAsset(url, Type.MTLIB);
           if (temp != null) { // `null' means no image available
             assets.add(temp);
@@ -381,7 +372,7 @@ public class TransferableHelper extends TransferHandler {
           MediaType mediaType = Asset.getMediaType(url);
 
           if (Asset.Type.fromMediaType(mediaType) == Type.INVALID) {
-            MapTool.showError("dragdrop.unsupportedType");
+            // MapTool.showError("dragdrop.unsupportedType");
             log.info("Unsupported file type: " + mediaType.toString() + " (" + url + ")");
             assets.add(AssetManager.getAsset(AssetManager.BAD_ASSET_LOCATION_KEY));
           } else {
@@ -399,9 +390,9 @@ public class TransferableHelper extends TransferHandler {
   }
 
   private static boolean checkValidType(MediaType mediaType) {
-    String contentType = mediaType.getType();
+    String contentType = mediaType.type();
 
-    String subType = mediaType.getSubtype();
+    String subType = mediaType.subtype();
     return switch (contentType) {
       case "audio", "image" -> true;
       case "text" ->
@@ -426,43 +417,6 @@ public class TransferableHelper extends TransferHandler {
 
   private static Asset handleTransferableAsset(Transferable transferable) throws Exception {
     return (Asset) transferable.getTransferData(TransferableAsset.dataFlavor);
-  }
-
-  /**
-   * Get the tokens from a token list data flavor.
-   *
-   * @param transferable The data that was dropped.
-   * @return The tokens from the data or <code>null</code> if this isn't the proper data type.
-   */
-  @SuppressWarnings("unchecked")
-  public static List<Token> getTokens(Transferable transferable) {
-    List<Token> tokens = null;
-    try {
-      Object df = transferable.getTransferData(GroupTokenTransferData.GROUP_TOKEN_LIST_FLAVOR);
-      List<TokenTransferData> tokenMaps = (List<TokenTransferData>) df;
-      tokens = new ArrayList<Token>();
-      for (Object object : tokenMaps) {
-        if (!(object instanceof TokenTransferData)) continue;
-        TokenTransferData td = (TokenTransferData) object;
-        if (td.getName() == null || td.getName().trim().length() == 0 || td.getToken() == null)
-          continue;
-        tokens.add(new Token(td));
-      } // endfor
-      if (tokens.size() != tokenMaps.size()) {
-        final int missingTokens = tokenMaps.size() - tokens.size();
-        final String message =
-            I18N.getText(
-                "TransferableHelper.warning.tokensAddedAndExcluded",
-                tokens.size(), // $NON-NLS-1$
-                missingTokens);
-        SwingUtilities.invokeLater(() -> MapTool.showWarning(message));
-      } // endif
-    } catch (IOException e) {
-      MapTool.showError("TransferableHelper.error.ioException", e); // $NON-NLS-1$
-    } catch (UnsupportedFlavorException e) {
-      MapTool.showError("TransferableHelper.error.unsupportedFlavorException", e); // $NON-NLS-1$
-    }
-    return tokens;
   }
 
   public static boolean isSupportedAssetFlavor(Transferable transferable) {
@@ -557,63 +511,19 @@ public class TransferableHelper extends TransferHandler {
 
     List<Object> assets = getAsset(t);
     if (assets != null) {
-      tokens = new ArrayList<Token>(assets.size());
-      configureTokens = new ArrayList<Boolean>(assets.size());
+
       for (Object working : assets) {
         if (working instanceof Asset asset) {
           if (asset.getType() == Type.MTLIB) {
-            if (MapTool.getPlayer().isGM()) {
               try {
                 var addOnLibrary = new AddOnLibraryImporter().importFromAsset(asset);
                 new LibraryManager().reregisterAddOnLibrary(addOnLibrary);
-                SwingUtilities.invokeLater(
-                    () -> {
-                      MapTool.showInformation(
-                          I18N.getText("library.imported", addOnLibrary.getNamespace().join()));
-                    });
               } catch (IOException e) {
-                SwingUtilities.invokeLater(
-                    () -> {
-                      MapTool.showError(I18N.getText("library.import.error", asset.getName()), e);
-                    });
               }
             } else {
-              MapTool.showError(I18N.getText("library.import.error.notGM"));
+              // MapTool.showError(I18N.getText("library.import.error.notGM"));
             }
-          } else {
-            Token token = new Token(asset.getName(), asset.getMD5Key());
-            tokens.add(token);
-            // A token from an image asset needs additional configuration.
-            configureTokens.add(true);
           }
-        } else if (working instanceof Token) {
-          Token token = new Token((Token) working);
-          tokens.add(token);
-          // A token from an .rptok file is already fully configured.
-          configureTokens.add(false);
-        }
-      }
-    } else {
-      if (t.isDataFlavorSupported(TransferableToken.dataFlavor)) {
-        try {
-          // Make a copy so that it gets a new unique GUID
-          tokens =
-              Collections.singletonList(
-                  new Token((Token) t.getTransferData(TransferableToken.dataFlavor)));
-          // A token from the Resource Library is already fully configured.
-          configureTokens = Collections.singletonList(Boolean.FALSE);
-        } catch (Exception e) {
-          log.error("while using TransferableToken.dataFlavor", e); // $NON-NLS-1$
-        }
-      } else if (t.isDataFlavorSupported(GroupTokenTransferData.GROUP_TOKEN_LIST_FLAVOR)) {
-        tokens = getTokens(t);
-        // Tokens from Init Tool all need to be configured.
-        configureTokens = new ArrayList<Boolean>(tokens.size());
-        for (int i = 0; i < tokens.size(); i++) {
-          configureTokens.add(true);
-        }
-      } else {
-        MapTool.showWarning("TransferableHelper.warning.badObject"); // $NON-NLS-1$
       }
     }
     return tokens != null;

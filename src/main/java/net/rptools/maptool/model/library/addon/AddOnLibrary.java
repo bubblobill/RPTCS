@@ -35,7 +35,6 @@ import javax.swing.SwingUtilities;
 import net.rptools.lib.MD5Key;
 import net.rptools.maptool.client.MapTool;
 import net.rptools.maptool.client.MapToolMacroContext;
-import net.rptools.maptool.client.MapToolVariableResolver;
 import net.rptools.maptool.client.macro.MacroManager;
 import net.rptools.maptool.client.macro.MacroManager.MacroDetails;
 import net.rptools.maptool.client.script.javascript.JSScriptEngine;
@@ -216,7 +215,7 @@ public class AddOnLibrary implements Library {
                 new HashSet<>(s.getPropertyTypesList()),
                 namespace));
       } catch (Exception e) {
-        MapTool.showError(I18N.getText("library.error.addOn.sheet", namespace, s.getName()), e);
+        // MapTool.showError(I18N.getText("library.error.addOn.sheet", namespace, s.getName()), e);
       }
     }
 
@@ -453,9 +452,9 @@ public class AddOnLibrary implements Library {
   @Override
   public void cleanup() {
     // Remove any existing JavaScript context if it exists
-    if (JSScriptEngine.hasAddOnContext(jsContextName)) {
-      JSScriptEngine.removeAddOnContext(jsContextName);
-    }
+//    if (JSScriptEngine.hasAddOnContext(jsContextName)) {
+//      JSScriptEngine.removeAddOnContext(jsContextName);
+//    }
   }
 
   @Override
@@ -607,11 +606,11 @@ public class AddOnLibrary implements Library {
                             .thenAccept(
                                 needInit -> {
                                   // First remove any existing JavaScript context if it exists
-                                  if (JSScriptEngine.hasAddOnContext(jsContextName)) {
-                                    JSScriptEngine.removeAddOnContext(jsContextName);
-                                  }
+//                                  if (JSScriptEngine.hasAddOnContext(jsContextName)) {
+//                                    JSScriptEngine.removeAddOnContext(jsContextName);
+//                                  }
                                   // Then create a new JavaScript context for the add-on library
-                                  JSScriptEngine.registerAddOnContext(jsContextName);
+//                                  JSScriptEngine.registerAddOnContext(jsContextName);
                                   if (needInit) {
                                     if (jsEventNameMap.containsKey(FIRST_INIT_EVENT)) {
                                       runJS(jsEventNameMap.get(FIRST_INIT_EVENT));
@@ -643,7 +642,7 @@ public class AddOnLibrary implements Library {
         statSheetManager.addStatSheet(sheet, this);
       } catch (IOException e) {
         logger.error(I18N.getText("library.error.addOn.sheet", namespace, sheet.name()));
-        MapTool.showError(I18N.getText("library.error.addOn.sheet", namespace, sheet.name()), e);
+        // MapTool.showError(I18N.getText("library.error.addOn.sheet", namespace, sheet.name()), e);
       }
     }
   }
@@ -655,24 +654,24 @@ public class AddOnLibrary implements Library {
    * @return a CompletableFuture that completes when the function MacroScript function has finished
    */
   private CompletableFuture<Void> callMTSFunction(String name) {
-    if (SwingUtilities.isEventDispatchThread()) {
-      var resolver = new MapToolVariableResolver(null);
-      try {
-        MapTool.getParser().runMacro(resolver, null, name + "@lib:" + namespace, "");
-      } catch (ParserException e) {
-        throw new CompletionException(e);
-      }
-    } else {
-      SwingUtilities.invokeLater(
-          () -> {
-            var resolver = new MapToolVariableResolver(null);
-            try {
-              MapTool.getParser().runMacro(resolver, null, name + "@lib:" + namespace, "");
-            } catch (ParserException e) {
-              throw new CompletionException(e);
-            }
-          });
-    }
+//    if (SwingUtilities.isEventDispatchThread()) {
+//      var resolver = new MapToolVariableResolver(null);
+//      try {
+//        MapTool.getParser().runMacro(resolver, null, name + "@lib:" + namespace, "");
+//      } catch (ParserException e) {
+//        throw new CompletionException(e);
+//      }
+//    } else {
+//      SwingUtilities.invokeLater(
+//          () -> {
+//            var resolver = new MapToolVariableResolver(null);
+//            try {
+//              MapTool.getParser().runMacro(resolver, null, name + "@lib:" + namespace, "");
+//            } catch (ParserException e) {
+//              throw new CompletionException(e);
+//            }
+//          });
+//    }
     return CompletableFuture.completedFuture(null);
   }
 
@@ -684,15 +683,15 @@ public class AddOnLibrary implements Library {
    */
   private void runJS(String file) {
     readFile(file)
-        .thenAccept(
-            script -> {
-              try {
-                JSScriptEngine.getJSScriptEngine()
-                    .evalScript(jsContextName, script.asAsset().getDataAsString(), true);
-              } catch (ParserException | ScriptException e) {
-                throw new RuntimeException(e);
-              }
-            })
+//        .thenAccept(
+//            script -> {
+//              try {
+//                JSScriptEngine.getJSScriptEngine()
+//                    .evalScript(jsContextName, script.asAsset().getDataAsString(), true);
+//              } catch (ParserException | ScriptException e) {
+//                throw new RuntimeException(e);
+//              }
+//            })
         .join();
   }
 

@@ -24,11 +24,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.rptools.lib.MD5Key;
 import net.rptools.lib.image.ImageUtil;
+import net.rptools.lib.image.RenderQuality;
 import net.rptools.maptool.client.AppPreferences;
 import net.rptools.maptool.client.ui.theme.Images;
 import net.rptools.maptool.client.ui.theme.RessourceManager;
 import net.rptools.maptool.model.Asset;
-import net.rptools.maptool.model.AssetAvailableListener;
 import net.rptools.maptool.model.AssetManager;
 import org.apache.commons.collections4.map.AbstractReferenceMap;
 import org.apache.commons.collections4.map.ReferenceMap;
@@ -190,7 +190,6 @@ public class ImageManager {
 
       // Force a load of the asset, this will trigger a transfer if the
       // asset is not available locally
-      AssetManager.getAssetAsynchronously(assetId, new AssetListener(assetId));
       return TRANSFERING_IMAGE;
     }
   }
@@ -308,7 +307,7 @@ public class ImageManager {
         scaleH = Math.max((int) ((double) scaleW / imageW * imageH), 1);
       }
       image =
-          ImageUtil.scaleBufferedImage(image, scaleW, scaleH, AppPreferences.renderQuality.get());
+          ImageUtil.scaleBufferedImage(image, scaleW, scaleH, RenderQuality.MEDIUM_SCALING);//, AppPreferences.renderQuality.get());
     }
 
     return image;
@@ -452,36 +451,5 @@ public class ImageManager {
     }
   }
 
-  private static class AssetListener implements AssetAvailableListener {
-    private final MD5Key id;
 
-    public AssetListener(MD5Key id) {
-      this.id = id;
-    }
-
-    public void assetAvailable(MD5Key key) {
-      if (!key.equals(id)) {
-        return;
-      }
-      // No longer need to be notified when this asset is available
-      AssetManager.removeAssetListener(id, this);
-
-      // Image is now available for loading
-      log.debug("Asset available: " + id);
-      backgroundLoadImage(AssetManager.getAsset(id));
-    }
-
-    @Override
-    public int hashCode() {
-      return id.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      AssetListener that = (AssetListener) o;
-      return Objects.equals(id, that.id);
-    }
-  }
 }

@@ -1,0 +1,152 @@
+/*
+ * This software Copyright by the RPTools.net development team, and
+ * licensed under the Affero GPL Version 3 or, at your option, any later
+ * version.
+ *
+ * MapTool Source Code is distributed in the hope that it will be
+ * useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License * along with this source Code.  If not, please visit
+ * <http://www.gnu.org/licenses/> and specifically the Affero license
+ * text at <http://www.gnu.org/licenses/agpl.html>.
+ */
+package net.rptools.extra.asset.url;
+
+import com.google.gson.Gson;
+import net.rpTools.aoTool.threading.ThreadPool;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
+
+public class RequestHandler {
+  private static final Gson gson = new Gson();
+
+  public static CompletableFuture<String> processRequest(
+      String method,
+      URI uri,
+      String _body,
+      HashMap<String, String> requestHeaders,
+      HashMap<String, String> responseHeaders) {
+    CompletableFuture<String> c = new CompletableFuture<>();
+    String body = (_body != null) ? _body : "";
+    String scheme = uri.getScheme();
+
+    // macro: URIs can only use POST requests
+    if (scheme.equalsIgnoreCase("macro")) {
+      if (!("post".equalsIgnoreCase(method))) {
+        responseHeaders.put(":Status", "405");
+        c.complete("Only POST method can call macros");
+        return c;
+      }
+      return callMacro(uri, body, requestHeaders, responseHeaders);
+    }
+
+    InputStream stream = null;
+    if (scheme.equalsIgnoreCase("lib")) {
+      if ("post".equalsIgnoreCase(method)) {
+        return callMacro(uri, body, requestHeaders, responseHeaders);
+      }
+      if (!("get".equalsIgnoreCase(method))) {
+        responseHeaders.put(":Status", "405");
+        c.complete("Only GET method can retrieve resources");
+        return c;
+      }
+
+      try {
+        stream = new LibraryURLConnection(uri.toURL()).getInputStream();
+      } catch (IOException ioe) {
+        responseHeaders.put(":Status", "404 Not Found");
+        c.complete(ioe.getMessage());
+        return c;
+      }
+      responseHeaders.put(":Status", "200");
+      try {
+        c.complete(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+        return c;
+      } catch (IOException e) {
+        responseHeaders.put(":Status", "500 Internal Exception");
+        c.complete(e.getMessage());
+        return c;
+      }
+    }
+
+    if (scheme.equalsIgnoreCase("asset")) {
+      if (!("get".equalsIgnoreCase(method))) {
+        responseHeaders.put(":Status", "405");
+        c.complete("Only GET method can retrieve assets");
+        return c;
+      }
+      try {
+        stream = new AssetURLStreamHandler.AssetURLConnection(uri.toURL()).getInputStream();
+      } catch (IOException ioe) {
+        responseHeaders.put(":Status", "404 Not Found");
+        c.complete(ioe.getMessage());
+        return c;
+      }
+      try {
+        byte[] bytes = stream.readAllBytes();
+        byte[] outBytes = new byte[bytes.length * 2];
+        for (int i = 0; i < bytes.length; i++) {
+          outBytes[i * 2] = 0;
+          outBytes[i * 2 + 1] = bytes[i];
+        }
+        responseHeaders.put(":Status", "200 OK");
+        c.complete(new String(outBytes, StandardCharsets.UTF_16));
+        return c;
+      } catch (IOException e) {
+        responseHeaders.put(":Status", "500 Internal Exception");
+        c.complete(e.getMessage());
+        return c;
+      }
+    }
+    c.complete(null);
+    return c;
+  }
+
+  private static CompletableFuture<String> callMacro(
+      URI uri,
+      String body,
+      HashMap<String, String> requestHeaders,
+      HashMap<String, String> responseHeaders) {
+    CompletableFuture<String> c = new CompletableFuture<>();
+
+    try {
+      Instant instant = Instant.now();
+      String formattedTime =
+          DateTimeFormatter.RFC_1123_DATE_TIME.withZone(ZoneOffset.UTC).format(instant);
+      responseHeaders.put("Server", "Maptool Macro Server");
+      responseHeaders.put("Date", formattedTime);
+      responseHeaders.put("Content-Type", "text/html");
+      responseHeaders.put(":Status", "200 OK");
+
+      c = ThreadPool.submitCompletable(
+                  () -> {
+                    String macroName;
+                    if ("lib".equalsIgnoreCase(uri.getScheme())) {
+                      macroName = uri.toString();
+                    } else {
+                      macroName = uri.getSchemeSpecificPart();
+                    }
+
+                    return macroName;
+                  })
+              .thenApply(
+                  (String r) -> r);
+
+      return c;
+    } catch (Exception e) {
+      responseHeaders.put(":Status", "500 Internal Exception");
+      c.complete(e.getMessage());
+      return c;
+    }
+  }
+}

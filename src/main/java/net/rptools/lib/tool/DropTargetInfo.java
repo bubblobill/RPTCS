@@ -64,30 +64,30 @@ public class DropTargetInfo extends JFrame implements DropTargetListener {
 
     @SuppressWarnings("unused")
     Object handlerObj = null;
-    try {
-      handlerObj =
-          new ImageTransferableHandler(AppPreferences.renderQuality::get)
-              .getTransferObject(dtde.getTransferable());
-
-      System.out.println("DropAction:" + dtde.getDropAction());
-      System.out.println("Source:" + dtde.getSource());
-      System.out.println("DropTargetContext:" + dtde.getDropTargetContext());
-      System.out.println("Data Flavors:");
-      for (DataFlavor flavor : dtde.getCurrentDataFlavorsAsList()) {
-        try {
-          System.out.println("\t" + flavor.getMimeType());
-        } catch (Exception e) {
-          System.out.println("\t\tfailed");
-        }
-      }
-      System.out.println("--------------------");
-      label.setIcon(
-          new ImageIcon(
-              new ImageTransferableHandler(AppPreferences.renderQuality::get)
-                  .getTransferObject(dtde.getTransferable())));
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+//    try {
+//      handlerObj =
+//          new ImageTransferableHandler(AppPreferences.renderQuality::get)
+//              .getTransferObject(dtde.getTransferable());
+//
+//      System.out.println("DropAction:" + dtde.getDropAction());
+//      System.out.println("Source:" + dtde.getSource());
+//      System.out.println("DropTargetContext:" + dtde.getDropTargetContext());
+//      System.out.println("Data Flavors:");
+//      for (DataFlavor flavor : dtde.getCurrentDataFlavorsAsList()) {
+//        try {
+//          System.out.println("\t" + flavor.getMimeType());
+//        } catch (Exception e) {
+//          System.out.println("\t\tfailed");
+//        }
+//      }
+//      System.out.println("--------------------");
+//      label.setIcon(
+//          new ImageIcon(
+//              new ImageTransferableHandler(AppPreferences.renderQuality::get)
+//                  .getTransferObject(dtde.getTransferable())));
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    }
   }
 
   public void dropActionChanged(DropTargetDragEvent dtde) {}

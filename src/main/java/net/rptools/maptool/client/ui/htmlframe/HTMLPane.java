@@ -34,8 +34,6 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 import net.rptools.maptool.client.AppPreferences;
 import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
-import net.rptools.maptool.client.ui.commandpanel.MessagePanel;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.library.LibraryManager;
 import org.apache.logging.log4j.LogManager;
@@ -77,10 +75,7 @@ public class HTMLPane extends JEditorPane {
             } else if (e.getDescription().startsWith("#")) {
               scrollToReference(e.getDescription().substring(1)); // scroll to the anchor
             } else {
-              Matcher m = MessagePanel.URL_PATTERN.matcher(e.getDescription());
-              if (m.matches() && m.group(1).equalsIgnoreCase("macro")) {
-                MacroLinkFunction.runMacroLink(e.getDescription());
-              }
+
             }
           }
         });
@@ -92,7 +87,7 @@ public class HTMLPane extends JEditorPane {
    * @return the rule for the body tag
    */
   public String getRuleBody() {
-    return String.format(CSS_RULE_BODY, AppPreferences.fontSize.get());
+    return String.format(CSS_RULE_BODY, 13);
   }
 
   public void addActionListener(ActionListener listener) {
@@ -109,7 +104,7 @@ public class HTMLPane extends JEditorPane {
    * @param cursor the cursor to set
    */
   public void setEditorKitDefaultCursor(Cursor cursor) {
-    editorKit.setDefaultCursor(cursor);
+//    editorKit.setDefaultCursor(cursor);
   }
 
   /**
@@ -124,7 +119,7 @@ public class HTMLPane extends JEditorPane {
           DefaultCaret caret = (DefaultCaret) getCaret();
           caret.setUpdatePolicy(
               scrollReset ? DefaultCaret.UPDATE_WHEN_ON_EDT : DefaultCaret.NEVER_UPDATE);
-          editorKit.flush();
+
           try {
             String htmlString = htmlContent.fetchString();
             setText(htmlString);
@@ -132,14 +127,14 @@ public class HTMLPane extends JEditorPane {
               setCaretPosition(0);
             }
           } catch (IOException e) {
-            MapTool.showError(I18N.getText("msg.error.html.loading", e.getMessage()));
+            // MapTool.showError(I18N.getText("msg.error.html.loading", e.getMessage()));
           }
         });
   }
 
   /** Flushes any caching for the panel. */
   public void flush() {
-    EventQueue.invokeLater(editorKit::flush);
+
   }
 
   /**
@@ -204,7 +199,7 @@ public class HTMLPane extends JEditorPane {
 
     StyleSheet style = document.getStyleSheet();
 
-    HTMLEditorKit.Parser parse = editorKit.getParser();
+//    HTMLEditorKit.Parser parse = editorKit.getParser();
     try {
       super.setText("");
       Enumeration<?> snames = style.getStyleNames();
@@ -221,8 +216,8 @@ public class HTMLPane extends JEditorPane {
       style.addRule(getRuleBody());
       style.addRule(CSS_RULE_DIV);
       style.addRule(CSS_RULE_SPAN);
-      parse.parse(new StringReader(text), new ParserCallBack(), true);
-    } catch (IOException e) {
+//      parse.parse(new StringReader(text), new ParserCallBack(), true);
+    } catch (Exception e) {
       // Do nothing, we should not get an io exception on string
     }
     log.debug("setting text in HTMLPane: {}", text);

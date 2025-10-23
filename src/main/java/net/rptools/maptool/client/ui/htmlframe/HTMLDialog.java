@@ -23,13 +23,8 @@ import java.math.BigDecimal;
 import java.util.*;
 import javax.swing.*;
 import net.rptools.maptool.client.MapTool;
-import net.rptools.maptool.client.functions.MacroLinkFunction;
-import net.rptools.maptool.client.functions.json.JSONMacroFunctions;
-import net.rptools.maptool.client.swing.SwingUtil;
 import net.rptools.maptool.language.I18N;
 import net.rptools.maptool.model.Token;
-import net.rptools.maptool.util.FunctionUtil;
-
 /**
  * Represents a JDialog holding an HTML panel. Can hold either an HTML3.2 (Swing) or a HTML5
  * (JavaFX) panel.
@@ -163,8 +158,6 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
     // Size the dialog, make it displayable, and validate it
     pack();
 
-    // Center dialog
-    SwingUtil.centerOver(this, parent);
   }
 
   /**
@@ -219,7 +212,7 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
     if (dialogs.containsKey(name)) {
       dialog = dialogs.get(name);
     } else {
-      dialog = new HTMLDialog(MapTool.getFrame(), name, frame, width, height, isHTML5);
+      dialog = new HTMLDialog(null, name, frame, width, height, isHTML5);
       dialogs.put(name, dialog);
     }
     dialog.updateContents(
@@ -264,17 +257,6 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
 
       dialogProperties.addProperty("width", dialog.getWidth());
       dialogProperties.addProperty("height", dialog.getHeight());
-      dialogProperties.addProperty(
-          "temporary", FunctionUtil.getDecimalForBoolean(dialog.getTemporary()));
-      dialogProperties.addProperty("title", dialog.getTitle());
-      dialogProperties.addProperty(
-          "visible", FunctionUtil.getDecimalForBoolean(dialog.isVisible()));
-      dialogProperties.addProperty(
-          "noframe", FunctionUtil.getDecimalForBoolean(dialog.isUndecorated()));
-      dialogProperties.addProperty("input", FunctionUtil.getDecimalForBoolean(dialog.input));
-      dialogProperties.addProperty(
-          "closebutton", FunctionUtil.getDecimalForBoolean(dialog.isAncestorOf(dialog.closePanel)));
-      dialogProperties.addProperty("html5", FunctionUtil.getDecimalForBoolean(dialog.isHTML5));
       Object dialogValue = dialog.getValue();
       if (dialogValue == null) {
         dialogValue = "";
@@ -287,7 +269,6 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
           }
         }
       }
-      dialogProperties.add("value", JSONMacroFunctions.getInstance().asJsonElement(dialogValue));
 
       return Optional.of(dialogProperties);
     } else {
@@ -360,7 +341,6 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
       dispose(); // required by setUndecorated
       setUndecorated(!decorated);
       pack();
-      SwingUtil.centerOver(this, parent);
     }
     this.input = input;
     this.temporary = temp;
@@ -392,7 +372,6 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
         closeRequest();
       }
       HTMLActionEvent.FormActionEvent fae = (HTMLActionEvent.FormActionEvent) e;
-      MacroLinkFunction.runMacroLink(fae.getAction() + fae.getData());
     }
     if (e instanceof HTMLActionEvent.ChangeTitleActionEvent) {
       this.setTitle(((HTMLActionEvent.ChangeTitleActionEvent) e).getNewTitle());
@@ -421,14 +400,11 @@ public class HTMLDialog extends JDialog implements HTMLPanelContainer {
       } else if (name.equalsIgnoreCase("height")) {
         if (canResize) {
           setSize(new Dimension(getWidth(), Integer.parseInt(content)));
-          SwingUtil.centerOver(this, parent);
           this.validate();
         }
       } else if (name.equalsIgnoreCase("temporary")) {
         temporary = Boolean.parseBoolean(content);
-        SwingUtil.centerOver(this, parent);
       } else if (name.equalsIgnoreCase("value")) {
-        SwingUtil.centerOver(this, parent);
         setValue(content);
       }
     }

@@ -14,26 +14,63 @@
  */
 package net.rptools.maptool.client.ui.htmlframe;
 
-import javax.swing.text.ViewFactory;
+import javax.swing.*;
+import javax.swing.text.*;
 import javax.swing.text.html.HTMLEditorKit;
-import net.rptools.maptool.client.swing.MessagePanelEditorKit;
+
+import java.io.*;
 
 @SuppressWarnings("serial")
-class HTMLPaneEditorKit extends MessagePanelEditorKit {
+class HTMLPaneEditorKit extends EditorKit {
   private final HTMLPaneViewFactory viewFactory;
 
   HTMLPaneEditorKit(HTMLPane htmlPane) {
-    setUseMacroLinkToolTips(false);
-    viewFactory = new HTMLPaneViewFactory(super.getViewFactory(), htmlPane);
+    viewFactory = new HTMLPaneViewFactory(new HTMLEditorKit.HTMLFactory(), htmlPane);
   }
 
-  @Override
+    @Override
+    public String getContentType() {
+        return "";
+    }
+
+    @Override
   public ViewFactory getViewFactory() {
     return viewFactory;
   }
 
-  @Override
-  public HTMLEditorKit.Parser getParser() {
-    return super.getParser();
-  }
+    @Override
+    public Action[] getActions() {
+        return new Action[0];
+    }
+
+    @Override
+    public Caret createCaret() {
+        return null;
+    }
+
+    @Override
+    public Document createDefaultDocument() {
+        return null;
+    }
+
+    @Override
+    public void read(InputStream in, Document doc, int pos) throws IOException, BadLocationException {
+
+    }
+
+    @Override
+    public void write(OutputStream out, Document doc, int pos, int len) throws IOException, BadLocationException {
+
+    }
+
+    @Override
+    public void read(Reader in, Document doc, int pos) throws IOException, BadLocationException {
+
+    }
+
+    @Override
+    public void write(Writer out, Document doc, int pos, int len) throws IOException, BadLocationException {
+
+    }
+
 }
